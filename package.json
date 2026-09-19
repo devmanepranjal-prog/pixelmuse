@@ -1,12 +1,13 @@
 {
-  "name": "temp-app",
+  "name": "pixel-muse",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "push": "node scripts/push.js"
   },
   "dependencies": {
     "isomorphic-git": "^1.42.2",
