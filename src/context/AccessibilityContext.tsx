@@ -19,6 +19,8 @@ import { triggerActiveBarrierRecalculation } from '@/lib/routeRecalculator';
 import { sessionRegistry } from '@/lib/navigationSessionRegistry';
 import { realtimeClient } from '@/lib/realtimeClient';
 
+import { PHOTO_PROOFS } from '@/data/photoProofAssets';
+
 export type PersonaType = 'wheelchair' | 'older-adult' | 'low-vision' | 'caregiver';
 export type FontScale = 'sm' | 'md' | 'lg';
 
@@ -51,6 +53,15 @@ interface AccessibilityContextType {
     description?: string;
     roadLayer?: RoadLayer;
     coordinates?: { lat: number; lng: number };
+    source?: string;
+    photoAttached?: boolean;
+    photoUrl?: string;
+    aiVerification?: {
+      verified: boolean;
+      label: string;
+      confidence: number;
+      details?: string;
+    };
   }) => void;
   upvoteReport: (id: string) => void;
   downvoteReport: (id: string) => void;
@@ -63,33 +74,75 @@ interface AccessibilityContextType {
 }
 
 const defaultReports: IndianBarrierReport[] = [
-  createBarrierReport({
-    title: 'Waterlogging & Heavy Rain Puddling',
-    category: 'Flooding/Waterlogging',
-    severity: 'high',
-    location: 'SVT Road - Underpass Entrance Gate 2',
-    description: '15cm water buildup near curb ramp. Accessible ramp temporarily submerged.',
-    coordinates: { lat: 19.0760, lng: 72.8777 },
-    roadLayer: 'at_grade',
-  }),
-  createBarrierReport({
-    title: 'Temporary Scaffold Blocking Curb Cut',
-    category: 'Construction Obstruction',
-    severity: 'high',
-    location: 'Main Plaza & 4th Avenue Crossing',
-    description: 'Construction scaffolding reduces sidewalk width below 90cm. Narrow clearance.',
-    coordinates: { lat: 19.0765, lng: 72.8782 },
-    roadLayer: 'at_grade',
-  }),
-  createBarrierReport({
-    title: 'Blocked Elevators - West Wing Entrance',
-    category: 'Elevator Outage',
-    severity: 'critical',
-    location: 'Building B, 2nd Floor Junction',
-    description: 'Main passenger elevator under emergency maintenance. Reroute via South Ramp Entrance.',
-    coordinates: { lat: 19.0770, lng: 72.8788 },
-    roadLayer: 'at_grade',
-  }),
+  (() => {
+    const rep = createBarrierReport({
+      title: 'Waterlogging & Heavy Rain Puddling',
+      category: 'Flooding/Waterlogging',
+      severity: 'high',
+      location: 'SVT Road - Underpass Entrance Gate 2',
+      description: '15cm water buildup near curb ramp. Accessible ramp temporarily submerged.',
+      coordinates: { lat: 19.0760, lng: 72.8777 },
+      roadLayer: 'at_grade',
+      source: 'Community Navigator',
+      photoAttached: true,
+      photoUrl: PHOTO_PROOFS.waterloggedRamp,
+      aiVerification: {
+        verified: true,
+        label: 'Ramp Submerged Obstacle',
+        confidence: 96,
+        details: '15cm puddle depth obscures curb tactile indicators. Impassable for manual wheelchairs.',
+      },
+    });
+    rep.votes = 12;
+    rep.status = 'Verified';
+    return rep;
+  })(),
+  (() => {
+    const rep = createBarrierReport({
+      title: 'Temporary Scaffold Blocking Curb Cut',
+      category: 'Construction Obstruction',
+      severity: 'high',
+      location: 'Main Plaza & 4th Avenue Crossing',
+      description: 'Construction scaffolding reduces sidewalk width below 90cm. Narrow clearance.',
+      coordinates: { lat: 19.0765, lng: 72.8782 },
+      roadLayer: 'at_grade',
+      source: 'Certified Accessibility Auditor',
+      photoAttached: true,
+      photoUrl: PHOTO_PROOFS.scaffoldObstruction,
+      aiVerification: {
+        verified: true,
+        label: 'Clearance Width < 90cm',
+        confidence: 94,
+        details: 'Scaffolding posts reduce passable width to 75cm. Wheelchair turning radius restricted.',
+      },
+    });
+    rep.votes = 24;
+    rep.status = 'Verified';
+    return rep;
+  })(),
+  (() => {
+    const rep = createBarrierReport({
+      title: 'Blocked Elevators - West Wing Entrance',
+      category: 'Elevator Outage',
+      severity: 'critical',
+      location: 'Building B, 2nd Floor Junction',
+      description: 'Main passenger elevator under emergency maintenance. Reroute via South Ramp Entrance.',
+      coordinates: { lat: 19.0770, lng: 72.8788 },
+      roadLayer: 'at_grade',
+      source: 'Official Transit Authority',
+      photoAttached: true,
+      photoUrl: PHOTO_PROOFS.elevatorOutage,
+      aiVerification: {
+        verified: true,
+        label: 'Elevator Out of Service Notice',
+        confidence: 98,
+        details: 'Emergency maintenance tape & notice confirmed. Directs to South Ramp C.',
+      },
+    });
+    rep.votes = 38;
+    rep.status = 'Verified';
+    return rep;
+  })(),
 ];
 
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
@@ -251,6 +304,15 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     description?: string;
     roadLayer?: RoadLayer;
     coordinates?: { lat: number; lng: number };
+    source?: string;
+    photoAttached?: boolean;
+    photoUrl?: string;
+    aiVerification?: {
+      verified: boolean;
+      label: string;
+      confidence: number;
+      details?: string;
+    };
   }) => {
     // If offline, queue report locally
     if (typeof navigator !== 'undefined' && !navigator.onLine) {

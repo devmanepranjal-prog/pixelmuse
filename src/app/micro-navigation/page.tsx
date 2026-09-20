@@ -19,7 +19,10 @@ import {
   Maximize,
   AlertTriangle,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  ShieldCheck,
+  Camera,
+  Sparkles
 } from 'lucide-react';
 
 interface StepItem {
@@ -29,6 +32,10 @@ interface StepItem {
   distance: string;
   icon: 'straight' | 'left' | 'right' | 'elevator' | 'door';
   floor: string;
+  category?: 'Ramp' | 'Lift' | 'Entrance' | 'Path';
+  trustScore?: number;
+  photoAttached?: boolean;
+  aiVerified?: boolean;
 }
 
 const steps: StepItem[] = [
@@ -38,7 +45,10 @@ const steps: StepItem[] = [
     subtext: 'Maintain straight path toward South Atrium Ramp. Surface is smooth concrete with rubber tactile studs.',
     distance: '25 meters',
     icon: 'straight',
-    floor: 'Level 1'
+    floor: 'Level 1',
+    category: 'Path',
+    trustScore: 98,
+    photoAttached: true,
   },
   {
     id: 2,
@@ -46,7 +56,11 @@ const steps: StepItem[] = [
     subtext: 'Gentle 3.5% incline ramp begins on your left. Dual handrails available on both sides.',
     distance: '15 meters',
     icon: 'left',
-    floor: 'Level 1'
+    floor: 'Level 1',
+    category: 'Ramp',
+    trustScore: 97,
+    photoAttached: true,
+    aiVerified: true,
   },
   {
     id: 3,
@@ -54,7 +68,11 @@ const steps: StepItem[] = [
     subtext: 'Wide 110cm automatic door. Select Floor 3 on lower accessible control panel (height 100cm).',
     distance: '8 meters',
     icon: 'elevator',
-    floor: 'Level 1 to Level 3'
+    floor: 'Level 1 to Level 3',
+    category: 'Lift',
+    trustScore: 96,
+    photoAttached: true,
+    aiVerified: true,
   },
   {
     id: 4,
@@ -62,7 +80,11 @@ const steps: StepItem[] = [
     subtext: 'Cardiology Department entrance is 10 meters straight ahead through double automatic sliding doors.',
     distance: '10 meters',
     icon: 'right',
-    floor: 'Level 3'
+    floor: 'Level 3',
+    category: 'Entrance',
+    trustScore: 99,
+    photoAttached: true,
+    aiVerified: true,
   }
 ];
 
@@ -143,14 +165,32 @@ export default function MicroNavigationPage() {
         <div className="p-6 md:p-8 bg-surface-container-lowest rounded-3xl border-2 border-primary shadow-xl flex flex-col gap-6">
           
           {/* Step Count & Floor Indicator */}
-          <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="px-3 py-1 rounded-xl bg-primary text-white text-sm font-black">
                 Step {step.id} of {steps.length}
               </span>
               <span className="text-xs font-bold text-on-surface-variant">
                 Floor: {step.floor}
               </span>
+              {step.trustScore && (
+                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                  <span>{step.trustScore}% Trust ({step.category || 'Facility'})</span>
+                </span>
+              )}
+              {step.photoAttached && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+                  <Camera className="w-3 h-3" />
+                  <span>Photo Proof</span>
+                </span>
+              )}
+              {step.aiVerified && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-purple-600" />
+                  <span>AI Verified</span>
+                </span>
+              )}
             </div>
 
             <button

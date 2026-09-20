@@ -163,9 +163,14 @@ export default function MainMapInterface({
                 <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
                   1
                 </div>
-                <div className="text-xs">
-                  <div className="font-bold text-slate-900 dark:text-purple-100">
-                    Depart Main Plaza via West Tactile Path
+                <div className="text-xs flex-1">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <span className="font-bold text-slate-900 dark:text-purple-100">
+                      Depart Main Plaza via West Tactile Path
+                    </span>
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                      98% Trust • 📷 Proof
+                    </span>
                   </div>
                   <div className="text-slate-500 dark:text-purple-300 mt-0.5">
                     Smooth asphalt surface, slope &lt; 2%. Tactile pavement present.
@@ -177,12 +182,17 @@ export default function MainMapInterface({
                 <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
                   2
                 </div>
-                <div className="text-xs">
-                  <div className="font-bold text-slate-900 dark:text-purple-100">
-                    Take Elevator B to Level 2 Junction
+                <div className="text-xs flex-1">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <span className="font-bold text-slate-900 dark:text-purple-100">
+                      Take Elevator B to Level 2 Junction (Lift)
+                    </span>
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                      96% Trust • 📷 Proof
+                    </span>
                   </div>
                   <div className="text-slate-500 dark:text-purple-300 mt-0.5">
-                    Braille buttons + voice announcement active.
+                    Braille buttons + voice announcement active. Photo-verified cabin dimensions.
                   </div>
                 </div>
               </div>
@@ -191,9 +201,14 @@ export default function MainMapInterface({
                 <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
                   3
                 </div>
-                <div className="text-xs">
-                  <div className="font-bold text-slate-900 dark:text-purple-100">
-                    Arrive at Cardiology Dept Reception
+                <div className="text-xs flex-1">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <span className="font-bold text-slate-900 dark:text-purple-100">
+                      Arrive at Cardiology Dept Reception
+                    </span>
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300">
+                      99% Verified
+                    </span>
                   </div>
                   <div className="text-slate-500 dark:text-purple-300 mt-0.5">
                     Automatic 110cm double sliding doors with low counter access.

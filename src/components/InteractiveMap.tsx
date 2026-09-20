@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAccessibility } from '@/context/AccessibilityContext';
 import Last50mCard from './Last50mCard';
-import { entrances } from '@/data/entrances';
+import { entrances, Entrance } from '@/data/entrances';
 import { selectEntrance } from '@/lib/entranceSelector';
+import { PHOTO_PROOFS } from '@/data/photoProofAssets';
+import { computeConfidence } from '@/lib/confidence';
 import {
   MapPin,
   Navigation,
@@ -25,7 +27,9 @@ import {
   Maximize2,
   Volume2,
   RotateCcw,
-  Check
+  Check,
+  Camera,
+  Sparkles
 } from 'lucide-react';
 
 interface InteractiveMapProps {
@@ -63,8 +67,15 @@ export default function InteractiveMap({
       y: '72%',
       title: 'South Ramp C Entrance',
       type: 'entrance',
+      category: 'Ramp',
       detail: 'Gentle 3.5% incline with dual stainless handrails. 110cm automatic door.',
-      status: 'Verified Step-Free'
+      status: 'Verified Step-Free',
+      trustScore: 97,
+      photoUrl: PHOTO_PROOFS.rampClean,
+      photoAttached: true,
+      aiVerified: true,
+      aiTag: 'Accessible Ramp (Incline < 6%)',
+      source: 'Certified Accessibility Auditor',
     },
     {
       id: 2,
@@ -72,8 +83,15 @@ export default function InteractiveMap({
       y: '55%',
       title: 'Elevator B Hub (West Wing)',
       type: 'elevator',
+      category: 'Lift',
       detail: 'Accessible Braille buttons at 100cm height + voice floor announcer.',
-      status: 'Active & Verified'
+      status: 'Active & Verified',
+      trustScore: 96,
+      photoUrl: PHOTO_PROOFS.elevatorLobby,
+      photoAttached: true,
+      aiVerified: true,
+      aiTag: 'Accessible Lift with Braille Panel',
+      source: 'Official Transit Authority',
     },
     {
       id: 3,
@@ -81,8 +99,15 @@ export default function InteractiveMap({
       y: '32%',
       title: 'Cardiology Pavilion Suite 304',
       type: 'destination',
+      category: 'Destination',
       detail: 'Wide 120cm double sliding doors with low-sensory waiting area.',
-      status: 'Destination Reached'
+      status: 'Destination Reached',
+      trustScore: 98,
+      photoUrl: PHOTO_PROOFS.rampClean,
+      photoAttached: true,
+      aiVerified: true,
+      aiTag: 'Wide Automatic Entry (120cm)',
+      source: 'Hospital Facility Survey',
     }
   ];
 
@@ -211,27 +236,65 @@ export default function InteractiveMap({
         <Last50mCard />
 
         {/* Selected Waypoint Info Detail Modal */}
-        {selectedWaypoint !== null && (
-          <div className="p-4 rounded-2xl bg-primary-container/10 border-2 border-primary flex flex-col gap-2 shadow-md animate-fade-in">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-primary uppercase">
-                Waypoint #{selectedWaypoint} Selected
-              </span>
-              <button
-                onClick={() => setSelectedWaypoint(null)}
-                className="text-xs font-bold text-on-surface-variant hover:text-on-surface"
-              >
-                ✕ Close
-              </button>
+        {selectedWaypoint !== null && (() => {
+          const wp = waypoints.find(w => w.id === selectedWaypoint);
+          if (!wp) return null;
+          return (
+            <div className="p-4 rounded-2xl bg-surface-container-low border-2 border-primary flex flex-col gap-2.5 shadow-md animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black text-primary uppercase">
+                    Waypoint #{wp.id}
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                    {wp.trustScore}% Trust
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedWaypoint(null)}
+                  className="text-xs font-bold text-on-surface-variant hover:text-on-surface"
+                >
+                  ✕ Close
+                </button>
+              </div>
+
+              {wp.photoUrl && (
+                <div className="relative w-full h-28 rounded-xl overflow-hidden border border-outline-variant/30 shadow-xs">
+                  <img
+                    src={wp.photoUrl}
+                    alt={wp.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-black/75 text-[10px] font-black text-white flex items-center gap-1">
+                    <Camera className="w-3 h-3 text-emerald-400" />
+                    <span>Photo Proof Verified</span>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-sm font-extrabold text-on-surface">
+                  {wp.title}
+                </h4>
+                <p className="text-xs text-on-surface-variant font-medium mt-0.5">
+                  {wp.detail}
+                </p>
+              </div>
+
+              {wp.aiTag && (
+                <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[11px] font-semibold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
+                  <span>AI Verification: {wp.aiTag}</span>
+                </div>
+              )}
+
+              <div className="text-[10px] text-on-surface-variant flex items-center justify-between border-t border-outline-variant/20 pt-1.5">
+                <span>Source: {wp.source}</span>
+                <span className="text-secondary font-bold">100% Step-Free</span>
+              </div>
             </div>
-            <h4 className="text-sm font-extrabold text-on-surface">
-              {waypoints.find(w => w.id === selectedWaypoint)?.title}
-            </h4>
-            <p className="text-xs text-on-surface-variant font-medium">
-              {waypoints.find(w => w.id === selectedWaypoint)?.detail}
-            </p>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Action CTAs */}
         <div className="flex flex-col gap-2 pt-2">
@@ -341,15 +404,20 @@ export default function InteractiveMap({
             </div>
 
             {/* Hover Tooltip */}
-            <div className="absolute top-12 left-1/2 -translate-x-1/2 w-48 p-2.5 rounded-xl bg-on-surface text-white text-center text-xs font-bold shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
+            <div className="absolute top-12 left-1/2 -translate-x-1/2 w-52 p-2.5 rounded-xl bg-on-surface text-white text-center text-xs font-bold shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
               {wp.title}
               <div className="text-[10px] font-medium text-secondary-container mt-0.5">{wp.status}</div>
+              <div className="flex items-center justify-center gap-1.5 mt-1 text-[10px] text-emerald-300">
+                <ShieldCheck className="w-3 h-3" />
+                <span>{wp.trustScore}% Trust • 📷 Photo Proof</span>
+              </div>
             </div>
           </div>
         ))}
 
         {/* Entrance Markers on Canvas */}
         {(activeLayer === 'all' || activeLayer === 'entrances') && entrances.map((ent) => {
+          const conf = computeConfidence(ent);
           // Mock coordinates for demo since map is an SVG illustration
           const coords: Record<string, {x: string, y: string}> = {
             'ent-1': {x: '40%', y: '40%'},
@@ -375,7 +443,7 @@ export default function InteractiveMap({
               key={`entrance-${ent.id}`}
               style={{ left: pos.x, top: pos.y }}
               onClick={() => {
-                speakText(`${markerStatus} Entrance: ${ent.name}`);
+                speakText(`${markerStatus} Entrance: ${ent.name}. Confidence score: ${conf.score} percent.`);
               }}
               className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-10"
             >
@@ -384,10 +452,13 @@ export default function InteractiveMap({
               </div>
 
               {/* Hover Tooltip */}
-              <div className="absolute top-10 left-1/2 -translate-x-1/2 w-40 p-2 rounded-xl bg-on-surface text-white text-center text-xs font-bold shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
+              <div className="absolute top-10 left-1/2 -translate-x-1/2 w-48 p-2 rounded-xl bg-on-surface text-white text-center text-xs font-bold shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
                 {ent.name}
                 <div className="text-[10px] font-medium mt-0.5" style={{ color: markerStatus === 'Recommended' ? '#a7f3d0' : markerStatus === 'Avoided' ? '#fecaca' : '#cbd5e1' }}>
                   {markerStatus}
+                </div>
+                <div className="text-[9px] text-emerald-300 font-semibold mt-0.5">
+                  {conf.score}% Trust • 📷 Photo Proof
                 </div>
               </div>
             </div>
