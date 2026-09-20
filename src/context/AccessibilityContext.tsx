@@ -11,10 +11,13 @@ import {
   RoadLayer,
 } from '@/lib/barrierEngine';
 import { calculateAdaptedRoute, RouteResult } from '@/lib/routingEngine';
-import { barrierBroadcaster, BarrierEvent } from '@/lib/realtimeEngine';
+import { barrierBroadcaster, BarrierEvent, ReroutePayload } from '@/lib/realtimeEngine';
 import { offlineSyncManager } from '@/lib/offlineSync';
 import { getAffectedNavigatingUsers } from '@/lib/spatialLookupEngine';
 import { RoadLayerType } from '@/lib/db/mongoSchema';
+import { triggerActiveBarrierRecalculation } from '@/lib/routeRecalculator';
+import { sessionRegistry } from '@/lib/navigationSessionRegistry';
+import { realtimeClient } from '@/lib/realtimeClient';
 
 export type PersonaType = 'wheelchair' | 'older-adult' | 'low-vision' | 'caregiver';
 export type FontScale = 'sm' | 'md' | 'lg';
@@ -55,6 +58,8 @@ interface AccessibilityContextType {
   recalculateCurrentRoute: () => RouteResult;
   realtimeEvents: BarrierEvent[];
   offlinePendingCount: number;
+  lastReroutePayload: ReroutePayload | null;
+  triggerBarrierActivation: (barrierId: string) => Promise<ReroutePayload[]>;
 }
 
 const defaultReports: IndianBarrierReport[] = [
@@ -105,6 +110,7 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
   const [barrierReports, setBarrierReports] = useState<IndianBarrierReport[]>(defaultReports);
   const [realtimeEvents, setRealtimeEvents] = useState<BarrierEvent[]>([]);
   const [offlinePendingCount, setOfflinePendingCount] = useState(0);
+  const [lastReroutePayload, setLastReroutePayload] = useState<ReroutePayload | null>(null);
 
   // Compute Initial Route Result
   const [currentRouteResult, setCurrentRouteResult] = useState<RouteResult>(() =>
@@ -148,13 +154,57 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     setCurrentRouteResult(newRoute);
   }, [barrierReports, simulatedObstacle.active]);
 
-  // Setup Real-time Event Broadcaster Subscription
+  // Seed default demo navigation session in registry if empty
   useEffect(() => {
+    if (sessionRegistry.getAllActiveSessions().length === 0) {
+      sessionRegistry.startSession({
+        userId: 'nav-user-pilot-1',
+        routeCoords: [
+          { lat: 19.0760, lng: 72.8777 },
+          { lat: 19.0770, lng: 72.8788 },
+          { lat: 19.0780, lng: 72.8800 },
+        ],
+        estimatedMinutes: 6,
+        alertCallback: (alert) => {
+          console.log('[NavSession Alert Received]', alert);
+        },
+      });
+    }
+  }, []);
+
+  // Setup Real-time Event Broadcaster & SSE Subscription
+  useEffect(() => {
+    // 1. In-memory broadcaster subscription
     const unsubscribe = barrierBroadcaster.subscribe(evt => {
       setRealtimeEvents(prev => [evt, ...prev.slice(0, 49)]); // Keep last 50 events
+
+      // 1. ROUTE_RECALCULATED / REROUTE_EMITTED
+      if ((evt.type === 'ROUTE_RECALCULATED' || evt.type === 'REROUTE_EMITTED') && evt.reroute) {
+        setLastReroutePayload(evt.reroute);
+        // Automatically sync adapted route into state
+        recalculateCurrentRoute();
+        speakText(`Route recalculated: avoids ${evt.reroute.hazardType}, saving ${evt.reroute.timeSaved} minutes.`);
+      }
+
+      // 2. BARRIER_AHEAD_ALERT
+      if (evt.type === 'BARRIER_AHEAD_ALERT' && evt.barrierAhead) {
+        speakText(`Warning: ${evt.barrierAhead.title} ahead in ${evt.barrierAhead.distanceAheadMeters} meters.`);
+      }
+
+      // 3. CONFIRMATION_PROMPT
+      if (evt.type === 'CONFIRMATION_PROMPT' && evt.confirmationPrompt) {
+        speakText(evt.confirmationPrompt.promptText);
+      }
     });
-    return unsubscribe;
-  }, []);
+
+    // 2. Connect client SSE stream if in browser
+    realtimeClient.connect();
+
+    return () => {
+      unsubscribe();
+      realtimeClient.disconnect();
+    };
+  }, [speakText, recalculateCurrentRoute]);
 
   // Setup Dynamic TTL Decay Tick Timer (runs every 10 seconds)
   useEffect(() => {
@@ -240,6 +290,11 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
         confidenceScore: target.votes / (target.votes + target.downvotes + 1),
         radiusMeters: 300,
       });
+
+      // Asynchronous route recalculation trigger when barrier is active/verified or critical
+      if (target.status === 'Verified' || target.severity === 'critical') {
+        triggerActiveBarrierRecalculation(target, { activeBarriers: updatedReports, autoUpdateSession: true });
+      }
     }
 
     if (merged) {
@@ -273,6 +328,11 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
           message: `Community verified barrier "${target.title}". TTL +30 min extension added.`,
         });
         speakText(`Upvoted barrier. Community confidence extended TTL by 30 minutes.`);
+
+        // When moving to 'Verified' (ACTIVE state), trigger asynchronous route recalculation
+        if (target.status === 'Verified') {
+          triggerActiveBarrierRecalculation(target, { activeBarriers: next, autoUpdateSession: true });
+        }
       }
       return next;
     });
@@ -305,6 +365,12 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     });
   };
 
+  const triggerBarrierActivation = useCallback(async (barrierId: string) => {
+    const target = barrierReports.find(b => b.id === barrierId);
+    if (!target) return [];
+    return triggerActiveBarrierRecalculation(target, { activeBarriers: barrierReports, autoUpdateSession: true });
+  }, [barrierReports]);
+
   return (
     <AccessibilityContext.Provider
       value={{
@@ -327,6 +393,8 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
         recalculateCurrentRoute,
         realtimeEvents,
         offlinePendingCount,
+        lastReroutePayload,
+        triggerBarrierActivation,
       }}
     >
       <div

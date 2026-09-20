@@ -19,6 +19,8 @@ import {
   CATEGORY_TTL_MINUTES,
   CATEGORY_BASE_PENALTY,
 } from './mongoSchema';
+import { triggerActiveBarrierRecalculation } from '../routeRecalculator';
+import { ReroutePayload } from '../realtimeEngine';
 
 // ============================================================
 // TTL & EXPIRY COMPUTATION
@@ -200,15 +202,26 @@ export function applyUpvote(report: IBarrierReport): Partial<IBarrierReport> {
   const newPenalty = computeRoutingPenalty(
     report.category, confidence, report.road_layer, report.road_layer
   );
+  const newStatus = report.status === BarrierStatus.PENDING && confidence >= 0.5
+    ? BarrierStatus.ACTIVE
+    : report.status;
+
+  // Asynchronous route recalculation triggered when barrier moves to ACTIVE
+  if (report.status !== BarrierStatus.ACTIVE && newStatus === BarrierStatus.ACTIVE) {
+    triggerActiveBarrierRecalculation({
+      ...report,
+      upvotes: newUpvotes,
+      confidence_score: confidence,
+      status: newStatus,
+    }).catch(err => console.error('[Recalculation Trigger Error]', err));
+  }
 
   return {
     upvotes: newUpvotes,
     confidence_score: confidence,
     routing_penalty: newPenalty,
     expires_at: newExpiresAt,
-    status: report.status === BarrierStatus.PENDING && confidence >= 0.5
-      ? BarrierStatus.ACTIVE
-      : report.status,
+    status: newStatus,
     updated_at: new Date(),
   };
 }
@@ -268,6 +281,18 @@ export function mergeIntoCluster(
   const newUpvotes = existing.upvotes + 1;
   const confidence = computeConfidenceScore(newUpvotes, existing.downvotes);
   const newExpiresAt = extendTTL(existing, 30);
+  const newStatus = confidence >= 0.5 ? BarrierStatus.ACTIVE : existing.status;
+
+  // Asynchronous route recalculation triggered when merged cluster moves to ACTIVE
+  if (existing.status !== BarrierStatus.ACTIVE && newStatus === BarrierStatus.ACTIVE) {
+    triggerActiveBarrierRecalculation({
+      ...existing,
+      upvotes: newUpvotes,
+      cluster_count: existing.cluster_count + 1,
+      confidence_score: confidence,
+      status: newStatus,
+    }).catch(err => console.error('[Recalculation Trigger Error]', err));
+  }
 
   return {
     upvotes: newUpvotes,
@@ -281,7 +306,23 @@ export function mergeIntoCluster(
     description: existing.description
       ? `${existing.description} | Re-confirmed by navigator.`
       : 'Re-confirmed by community navigator.',
-    status: confidence >= 0.5 ? BarrierStatus.ACTIVE : existing.status,
+    status: newStatus,
     updated_at: new Date(),
   };
+}
+
+/**
+ * Dispatches an asynchronous recalculation trigger when a barrier transitions to ACTIVE.
+ */
+export async function handleBarrierStatusChange(
+  report: IBarrierReport,
+  newStatus: BarrierStatus
+): Promise<ReroutePayload[]> {
+  if (newStatus === BarrierStatus.ACTIVE) {
+    return triggerActiveBarrierRecalculation({
+      ...report,
+      status: newStatus,
+    });
+  }
+  return [];
 }

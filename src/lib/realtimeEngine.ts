@@ -4,9 +4,47 @@ import { RouteResult } from './routingEngine';
 export type EventType =
   | 'BARRIER_REPORTED'
   | 'BARRIER_CONFIRMED'
+  | 'BARRIER_ACTIVATED'
   | 'BARRIER_EXPIRED'
   | 'ROUTE_RECALCULATED'
-  | 'ALERT_PUSHED';
+  | 'ALERT_PUSHED'
+  | 'REROUTE_EMITTED'
+  | 'BARRIER_AHEAD_ALERT'
+  | 'CONFIRMATION_PROMPT';
+
+export interface ReroutePayload {
+  sessionId: string;
+  newPolyline: string;
+  timeSaved: number;
+  hazardType: string;
+  newDistanceMeters?: number;
+  newEtaMinutes?: number;
+  originalEtaMinutes?: number;
+  avoidsBlockage?: boolean;
+}
+
+export interface BarrierAheadAlertPayload {
+  sessionId: string;
+  barrierId: string;
+  title: string;
+  category: string;
+  location: { lat: number; lng: number };
+  distanceAheadMeters: number;
+  estimatedDetourMinutes: number;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+  roadLayer: string;
+}
+
+export interface ConfirmationPromptPayload {
+  sessionId: string;
+  barrierId: string;
+  promptText: string;
+  category: string;
+  location: { lat: number; lng: number };
+  distanceMeters: number;
+  expiresInMinutes: number;
+}
 
 export interface BarrierEvent {
   id: string;
@@ -15,6 +53,9 @@ export interface BarrierEvent {
   quadKey?: string;
   barrier?: IndianBarrierReport;
   routeResult?: RouteResult;
+  reroute?: ReroutePayload;
+  barrierAhead?: BarrierAheadAlertPayload;
+  confirmationPrompt?: ConfirmationPromptPayload;
   message: string;
 }
 
