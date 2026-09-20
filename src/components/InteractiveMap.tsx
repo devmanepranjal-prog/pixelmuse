@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAccessibility } from '@/context/AccessibilityContext';
+import Last50mCard from './Last50mCard';
+import { entrances } from '@/data/entrances';
+import { selectEntrance } from '@/lib/entranceSelector';
 import {
   MapPin,
   Navigation,
@@ -39,7 +42,7 @@ export default function InteractiveMap({
   const [source, setSource] = useState(initialSource);
   const [destination, setDestination] = useState(initialDestination);
   const [zoomLevel, setZoomLevel] = useState(16);
-  const [activeLayer, setActiveLayer] = useState<'all' | 'tactile' | 'elevators' | 'ramps'>('all');
+  const [activeLayer, setActiveLayer] = useState<'all' | 'tactile' | 'elevators' | 'ramps' | 'entrances'>('all');
   const [selectedWaypoint, setSelectedWaypoint] = useState<number | null>(null);
   const [mapStyle, setMapStyle] = useState<'standard' | 'satellite' | 'accessibility'>('accessibility');
 
@@ -49,6 +52,9 @@ export default function InteractiveMap({
     setDestination(temp);
     speakText("Swapped origin and destination");
   };
+
+  const userLocationMock = { lat: 40.7126, lng: -74.0055 };
+  const entranceSelection = selectEntrance(entrances, persona, userLocationMock);
 
   const waypoints = [
     {
@@ -202,6 +208,8 @@ export default function InteractiveMap({
           </div>
         </div>
 
+        <Last50mCard />
+
         {/* Selected Waypoint Info Detail Modal */}
         {selectedWaypoint !== null && (
           <div className="p-4 rounded-2xl bg-primary-container/10 border-2 border-primary flex flex-col gap-2 shadow-md animate-fade-in">
@@ -340,6 +348,52 @@ export default function InteractiveMap({
           </div>
         ))}
 
+        {/* Entrance Markers on Canvas */}
+        {(activeLayer === 'all' || activeLayer === 'entrances') && entrances.map((ent) => {
+          // Mock coordinates for demo since map is an SVG illustration
+          const coords: Record<string, {x: string, y: string}> = {
+            'ent-1': {x: '40%', y: '40%'},
+            'ent-2': {x: '25%', y: '65%'},
+            'ent-3': {x: '55%', y: '50%'},
+            'ent-4': {x: '65%', y: '45%'}
+          };
+          const pos = coords[ent.id] || {x: '50%', y: '50%'};
+          
+          let markerColor = 'bg-surface-container-highest text-on-surface ring-outline-variant/30';
+          let markerStatus = 'Not Recommended';
+          
+          if (entranceSelection.recommended?.id === ent.id) {
+            markerColor = 'bg-primary text-white ring-primary/30';
+            markerStatus = 'Recommended';
+          } else if (entranceSelection.avoided.some(a => a.entrance.id === ent.id)) {
+            markerColor = 'bg-red-600 text-white ring-red-600/30';
+            markerStatus = 'Avoided';
+          }
+
+          return (
+            <div
+              key={`entrance-${ent.id}`}
+              style={{ left: pos.x, top: pos.y }}
+              onClick={() => {
+                speakText(`${markerStatus} Entrance: ${ent.name}`);
+              }}
+              className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-10"
+            >
+              <div className={`relative flex items-center justify-center w-8 h-8 rounded-full shadow-md transition-transform group-hover:scale-125 ${markerColor} ring-4`}>
+                <Building className="w-4 h-4 fill-current" />
+              </div>
+
+              {/* Hover Tooltip */}
+              <div className="absolute top-10 left-1/2 -translate-x-1/2 w-40 p-2 rounded-xl bg-on-surface text-white text-center text-xs font-bold shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
+                {ent.name}
+                <div className="text-[10px] font-medium mt-0.5" style={{ color: markerStatus === 'Recommended' ? '#a7f3d0' : markerStatus === 'Avoided' ? '#fecaca' : '#cbd5e1' }}>
+                  {markerStatus}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
         {/* Map Control Buttons (Top Right) */}
         <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
           
@@ -365,6 +419,17 @@ export default function InteractiveMap({
             >
               <CheckCircle2 className="w-4 h-4" />
               <span className="hidden md:inline">Tactile Paving</span>
+            </button>
+
+            <button
+              onClick={() => setActiveLayer('entrances')}
+              className={`p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeLayer === 'entrances' ? 'bg-primary text-white shadow-xs' : 'text-on-surface hover:bg-surface-container'
+              }`}
+              title="Accessible Entrances"
+            >
+              <Building className="w-4 h-4" />
+              <span className="hidden md:inline">Entrances</span>
             </button>
           </div>
 
