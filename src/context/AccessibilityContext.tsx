@@ -13,6 +13,8 @@ import {
 import { calculateAdaptedRoute, RouteResult } from '@/lib/routingEngine';
 import { barrierBroadcaster, BarrierEvent } from '@/lib/realtimeEngine';
 import { offlineSyncManager } from '@/lib/offlineSync';
+import { getAffectedNavigatingUsers } from '@/lib/spatialLookupEngine';
+import { RoadLayerType } from '@/lib/db/mongoSchema';
 
 export type PersonaType = 'wheelchair' | 'older-adult' | 'low-vision' | 'caregiver';
 export type FontScale = 'sm' | 'md' | 'lg';
@@ -221,6 +223,24 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     setBarrierReports(updatedReports);
 
     const target = updatedReports.find(r => r.id === targetId);
+
+    // ── Spatial Lookup: find all active navigating users affected ──
+    if (target) {
+      // Map our internal RoadLayer string to RoadLayerType enum for lookup engine
+      const layerMap: Record<string, RoadLayerType> = {
+        flyover: RoadLayerType.FLYOVER,
+        service_road: RoadLayerType.SERVICE_ROAD,
+        at_grade: RoadLayerType.AT_GRADE,
+      };
+      getAffectedNavigatingUsers({
+        barrierId: target.id,
+        category: target.category,
+        location: target.coordinates,
+        roadLayer: layerMap[target.roadLayer] ?? RoadLayerType.AT_GRADE,
+        confidenceScore: target.votes / (target.votes + target.downvotes + 1),
+        radiusMeters: 300,
+      });
+    }
 
     if (merged) {
       barrierBroadcaster.broadcast({

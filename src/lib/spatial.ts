@@ -118,3 +118,17 @@ export function isBarrierOnRouteSegment(
   }
   return false;
 }
+
+/**
+ * Computes remaining route distance in meters from a given waypoint index to destination.
+ */
+export function getRemainingRouteDistance(
+  routeCoords: Coordinates[],
+  fromIndex: number
+): number {
+  let total = 0;
+  for (let i = fromIndex; i < routeCoords.length - 1; i++) {
+    total += calculateHaversineDistance(routeCoords[i], routeCoords[i + 1]);
+  }
+  return total;
+}
