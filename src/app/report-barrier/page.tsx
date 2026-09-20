@@ -28,8 +28,12 @@ export default function ReportBarrierPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const categories = [
-    'Elevator Outage',
+    'Flooding/Waterlogging',
     'Construction Obstruction',
+    'Blocked Ramp/Flyover',
+    'Police Checkpoint/Barricade',
+    'Fallen Tree/Pothole Obstruction',
+    'Elevator Outage',
     'Missing Curb Cut',
     'Door Sensor Malfunction',
     'Steep Slope Ramp',

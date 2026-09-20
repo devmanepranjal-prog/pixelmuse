@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function CommunityConfidencePage() {
-  const { barrierReports, upvoteReport, speakText } = useAccessibility();
+  const { barrierReports, upvoteReport, downvoteReport, speakText } = useAccessibility();
   const [filterTag, setFilterTag] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -29,6 +29,7 @@ export default function CommunityConfidencePage() {
   ];
 
   const filteredReports = barrierReports.filter(report => {
+    if (report.isExpired || report.status === 'Expired') return false;
     if (filterTag === 'elevator' && !report.category.toLowerCase().includes('elevator')) return false;
     if (filterTag === 'critical' && report.severity !== 'critical') return false;
     if (filterTag === 'verified' && report.status !== 'Verified') return false;
@@ -178,21 +179,33 @@ export default function CommunityConfidencePage() {
                   </p>
                 </div>
 
-                {/* Footer Upvote */}
-                <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20">
-                  <button
-                    onClick={() => {
-                      upvoteReport(report.id);
-                      speakText(`Helpful upvote registered for ${report.title}`);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-primary font-bold text-xs transition-colors"
-                  >
-                    <ThumbsUp className="w-4 h-4" />
-                    <span>Helpful ({report.votes})</span>
-                  </button>
+                {/* Footer Upvote & Downvote */}
+                <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        upvoteReport(report.id);
+                        speakText(`Helpful upvote registered for ${report.title}`);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-primary font-bold text-xs transition-colors"
+                    >
+                      <ThumbsUp className="w-4 h-4" />
+                      <span>Confirm Still There (+30m) ({report.votes})</span>
+                    </button>
 
-                  <span className="text-xs font-semibold text-on-surface-variant">
-                    Verified by 2+ Navigators
+                    <button
+                      onClick={() => {
+                        downvoteReport(report.id);
+                        speakText(`Downvoted barrier ${report.title}`);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-error-container/20 hover:bg-error-container/40 text-error font-bold text-xs transition-colors"
+                    >
+                      <span>Resolved / Not There (-45m)</span>
+                    </button>
+                  </div>
+
+                  <span className="text-xs font-semibold text-on-surface-variant flex items-center gap-1">
+                    ⏱️ TTL: {Math.max(0, Math.floor((report.ttlSeconds || 0) / 60))}m remaining
                   </span>
                 </div>
               </div>
