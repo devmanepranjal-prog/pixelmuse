@@ -1,0 +1,46 @@
+[
+  {
+    "id": "usr_demo_1",
+    "name": "Alex Rivera",
+    "email": "alex.rivera@community.org",
+    "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+    "hasCompletedProfile": true,
+    "accessibilityPreferences": {
+      "primaryPersona": "wheelchair",
+      "mobilityType": "electric-wheelchair",
+      "requireStepFree": true,
+      "maxSlopePercent": 5,
+      "preferLowerSlopes": true,
+      "preferReducedDistance": true,
+      "preferSaferCrossings": true,
+      "avoidStairs": true,
+      "needTactilePaving": false,
+      "needAudioPrompts": true,
+      "maxWalkingDistanceMeters": 1000
+    },
+    "createdAt": "2026-09-21T09:58:29.805Z",
+    "updatedAt": "2026-09-21T09:58:29.805Z"
+  },
+  {
+    "id": "usr_1789984709808_h6ez1",
+    "name": "darefger",
+    "email": "devmanepranjal@gmail.com",
+    "passwordHash": "0841776bd9ba3b96aeced96487b3dae47236b58de5b80f8de237b461e055b349",
+    "hasCompletedProfile": true,
+    "accessibilityPreferences": {
+      "primaryPersona": "low-vision",
+      "mobilityType": "visually-impaired",
+      "requireStepFree": true,
+      "maxSlopePercent": 3,
+      "preferLowerSlopes": true,
+      "preferReducedDistance": true,
+      "preferSaferCrossings": true,
+      "avoidStairs": true,
+      "needTactilePaving": false,
+      "needAudioPrompts": true,
+      "maxWalkingDistanceMeters": 1000
+    },
+    "createdAt": "2026-09-21T09:58:29.808Z",
+    "updatedAt": "2026-09-21T09:59:09.882Z"
+  }
+]

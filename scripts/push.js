@@ -25,10 +25,11 @@ async function run() {
       dir,
       remote: 'origin',
       ref: 'main',
+      url: 'https://github.com/devmanepranjal-prog/pixelmuse.git',
       onAuth: () => ({ username: token })
     });
     console.log("Push result:", pushResult);
-    console.log("\n✅ SUCCESSFULLY PUSHED FRONTEND TO https://github.com/AasthaRai07/Pixel-Muse.git !");
+    console.log("\n✅ SUCCESSFULLY PUSHED FRONTEND TO https://github.com/devmanepranjal-prog/pixelmuse.git !");
   } catch (err) {
     console.error("\n❌ Push Failed:", err.message);
   }

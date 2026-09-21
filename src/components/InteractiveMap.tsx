@@ -31,11 +31,13 @@ import {
 interface InteractiveMapProps {
   initialSource?: string;
   initialDestination?: string;
+  onSimulateClick?: () => void;
 }
 
 export default function InteractiveMap({
   initialSource = 'My Current Location (GPS High Precision)',
-  initialDestination = 'Cardiology Pavilion - Level 3 (Building B)'
+  initialDestination = 'Cardiology Pavilion - Level 3 (Building B)',
+  onSimulateClick,
 }: InteractiveMapProps) {
   const { persona, simulatedObstacle, speakText } = useAccessibility();
 
@@ -244,13 +246,25 @@ export default function InteractiveMap({
             <span>Start Micro-Navigation Guidance</span>
           </Link>
 
-          <Link
-            href="/route-simulator"
-            className="w-full h-11 rounded-2xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 font-bold text-xs text-on-surface flex items-center justify-center gap-2"
+          <button
+            type="button"
+            onClick={() => {
+              if (onSimulateClick) {
+                onSimulateClick();
+              } else {
+                const el = document.getElementById('route-simulator-section');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                  window.location.href = '/gps-precision#route-simulator-section';
+                }
+              }
+            }}
+            className="w-full h-11 rounded-2xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 font-bold text-xs text-on-surface flex items-center justify-center gap-2 cursor-pointer transition-colors"
           >
             <Sliders className="w-4 h-4 text-primary" />
             <span>Simulate Urban Obstacles</span>
-          </Link>
+          </button>
         </div>
 
       </div>

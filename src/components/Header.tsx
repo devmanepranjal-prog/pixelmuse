@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAccessibility } from '@/context/AccessibilityContext';
 import { 
   CheckCircle2, 
   Navigation, 
@@ -12,7 +13,8 @@ import {
   Users, 
   AlertTriangle, 
   PlusCircle, 
-  User 
+  User,
+  Sliders
 } from 'lucide-react';
 
 const navItems = [
@@ -26,6 +28,7 @@ const navItems = [
 
 export default function Header() {
   const pathname = usePathname();
+  const { user, openOnboarding } = useAccessibility();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-outline-variant/30 shadow-xs">
@@ -83,10 +86,15 @@ export default function Header() {
         {/* Profile & Mobile Nav */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
-            aria-label="User profile settings"
-            className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary shadow-sm hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
+            type="button"
+            onClick={openOnboarding}
+            aria-label="User profile & accessibility settings"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary text-on-primary shadow-sm hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer text-xs font-bold"
           >
-            <User className="w-5 h-5" />
+            <User className="w-4 h-4" />
+            <span className="hidden sm:inline">
+              {user.isLoggedIn ? (user.name || 'Profile') : 'Log In / Setup'}
+            </span>
           </button>
         </div>
       </div>

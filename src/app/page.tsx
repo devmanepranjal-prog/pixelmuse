@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAccessibility, PersonaType } from '@/context/AccessibilityContext';
+import OnboardingFlowModal from '@/components/OnboardingFlowModal';
+import PersonalizedProfileBanner from '@/components/PersonalizedProfileBanner';
+import LandingPage from '@/app/landing/page';
 import {
   Search,
   Mic,
@@ -33,7 +36,18 @@ interface PreferenceState {
 }
 
 export default function RoutePlannerPage() {
-  const { persona, setPersona, simulatedObstacle, speakText } = useAccessibility();
+  const {
+    persona,
+    setPersona,
+    simulatedObstacle,
+    speakText,
+    isOnboardingOpen,
+    closeOnboarding,
+    openOnboarding,
+    user,
+  } = useAccessibility();
+
+  const [previewDashboard, setPreviewDashboard] = useState(false);
   const [searchQuery, setSearchQuery] = useState('St. Jude Medical Pavilion - Cardiology Dept');
   const [isSearching, setIsSearching] = useState(false);
   const [preferences, setPreferences] = useState<PreferenceState>({
@@ -43,6 +57,11 @@ export default function RoutePlannerPage() {
     wideDoors: true,
     lowSensory: false,
   });
+
+  // If user is not logged in and has not selected to preview, show clean Landing Page
+  if (!user.isLoggedIn && !previewDashboard) {
+    return <LandingPage />;
+  }
 
   const personas: { id: PersonaType; title: string; icon: React.ElementType }[] = [
     { id: 'wheelchair', title: 'Wheelchair', icon: Accessibility },
@@ -70,7 +89,11 @@ export default function RoutePlannerPage() {
 
   return (
     <div className="w-full px-4 md:px-8 py-8 flex justify-center">
+      <OnboardingFlowModal isOpen={isOnboardingOpen} onClose={closeOnboarding} />
+
       <div className="w-full max-w-[850px] flex flex-col gap-6">
+        {/* Personalized Profile Header Banner */}
+        <PersonalizedProfileBanner />
         
         {/* Title Header */}
         <div className="flex items-center gap-4">

@@ -22,6 +22,27 @@ import { realtimeClient } from '@/lib/realtimeClient';
 export type PersonaType = 'wheelchair' | 'older-adult' | 'low-vision' | 'caregiver';
 export type FontScale = 'sm' | 'md' | 'lg';
 
+export interface UserProfile {
+  name: string;
+  email: string;
+  isLoggedIn: boolean;
+  hasCompletedProfile: boolean;
+}
+
+export interface AccessibilityPreferences {
+  primaryPersona: PersonaType;
+  mobilityType: string;
+  requireStepFree: boolean;
+  maxSlopePercent: number;
+  preferLowerSlopes: boolean;
+  preferReducedDistance: boolean;
+  preferSaferCrossings: boolean;
+  avoidStairs: boolean;
+  needTactilePaving: boolean;
+  needAudioPrompts: boolean;
+  maxWalkingDistanceMeters: number;
+}
+
 export interface BarrierReport extends IndianBarrierReport {}
 
 interface AccessibilityContextType {
@@ -34,6 +55,15 @@ interface AccessibilityContextType {
   speakText: (text: string) => void;
   persona: PersonaType;
   setPersona: (p: PersonaType) => void;
+  user: UserProfile;
+  accessibilityPreferences: AccessibilityPreferences;
+  isOnboardingOpen: boolean;
+  openOnboarding: () => void;
+  closeOnboarding: () => void;
+  loginUser: (email: string, password?: string) => Promise<UserProfile>;
+  registerUser: (name: string, email: string, password?: string) => Promise<UserProfile>;
+  logoutUser: () => void;
+  saveAccessibilityProfile: (prefs: Partial<AccessibilityPreferences>) => Promise<UserProfile>;
   simulatedObstacle: {
     active: boolean;
     title: string;
@@ -92,13 +122,207 @@ const defaultReports: IndianBarrierReport[] = [
   }),
 ];
 
+const DEFAULT_USER: UserProfile = {
+  name: '',
+  email: '',
+  isLoggedIn: false,
+  hasCompletedProfile: false,
+};
+
+const DEFAULT_PREFERENCES: AccessibilityPreferences = {
+  primaryPersona: 'wheelchair',
+  mobilityType: 'electric-wheelchair',
+  requireStepFree: true,
+  maxSlopePercent: 5,
+  preferLowerSlopes: true,
+  preferReducedDistance: true,
+  preferSaferCrossings: true,
+  avoidStairs: true,
+  needTactilePaving: false,
+  needAudioPrompts: true,
+  maxWalkingDistanceMeters: 1000,
+};
+
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
 
 export function AccessibilityProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserProfile>(DEFAULT_USER);
+  const [accessibilityPreferences, setAccessibilityPreferences] = useState<AccessibilityPreferences>(DEFAULT_PREFERENCES);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [fontScale, setFontScale] = useState<FontScale>('md');
   const [isVoicePromptActive, setIsVoicePromptActive] = useState(false);
   const [persona, setPersona] = useState<PersonaType>('wheelchair');
+
+  // Load state from localStorage & fetch fresh DB profile on initial mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const savedUser = localStorage.getItem('pathfinder_user');
+      if (savedUser) {
+        const parsedUser = JSON.parse(savedUser);
+        if (parsedUser.email) {
+          // Fetch authoritative profile from server database
+          fetch(`/api/user/profile?email=${encodeURIComponent(parsedUser.email)}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.user) {
+                const freshUser: UserProfile = {
+                  name: data.user.name,
+                  email: data.user.email,
+                  isLoggedIn: true,
+                  hasCompletedProfile: data.user.hasCompletedProfile,
+                };
+                setUser(freshUser);
+                if (data.user.accessibilityPreferences) {
+                  setAccessibilityPreferences(data.user.accessibilityPreferences);
+                  if (data.user.accessibilityPreferences.primaryPersona) {
+                    setPersona(data.user.accessibilityPreferences.primaryPersona);
+                  }
+                  if (typeof data.user.accessibilityPreferences.needAudioPrompts === 'boolean') {
+                    setIsVoicePromptActive(data.user.accessibilityPreferences.needAudioPrompts);
+                  }
+                }
+              }
+            })
+            .catch(err => {
+              console.warn('Could not fetch server profile, using cached localStorage user:', err);
+              setUser(parsedUser);
+            });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load user profile:', e);
+    }
+  }, []);
+
+  const openOnboarding = () => setIsOnboardingOpen(true);
+  const closeOnboarding = () => setIsOnboardingOpen(false);
+
+  const loginUser = async (email: string, password?: string): Promise<UserProfile> => {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: password || 'password123' }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Login failed');
+    }
+
+    const dbUser: UserProfile = {
+      name: data.user.name,
+      email: data.user.email,
+      isLoggedIn: true,
+      hasCompletedProfile: data.user.hasCompletedProfile,
+    };
+
+    setUser(dbUser);
+    if (data.user.accessibilityPreferences) {
+      setAccessibilityPreferences(data.user.accessibilityPreferences);
+      if (data.user.accessibilityPreferences.primaryPersona) {
+        setPersona(data.user.accessibilityPreferences.primaryPersona);
+      }
+      if (typeof data.user.accessibilityPreferences.needAudioPrompts === 'boolean') {
+        setIsVoicePromptActive(data.user.accessibilityPreferences.needAudioPrompts);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pathfinder_user', JSON.stringify(dbUser));
+      localStorage.setItem('pathfinder_token', data.token || '');
+      if (data.user.accessibilityPreferences) {
+        localStorage.setItem('pathfinder_preferences', JSON.stringify(data.user.accessibilityPreferences));
+      }
+    }
+
+    return dbUser;
+  };
+
+  const registerUser = async (name: string, email: string, password?: string): Promise<UserProfile> => {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password: password || 'password123' }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Registration failed');
+    }
+
+    const dbUser: UserProfile = {
+      name: data.user.name,
+      email: data.user.email,
+      isLoggedIn: true,
+      hasCompletedProfile: false,
+    };
+
+    setUser(dbUser);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pathfinder_user', JSON.stringify(dbUser));
+      localStorage.setItem('pathfinder_token', data.token || '');
+    }
+
+    return dbUser;
+  };
+
+  const logoutUser = () => {
+    const resetUser: UserProfile = {
+      name: '',
+      email: '',
+      isLoggedIn: false,
+      hasCompletedProfile: false,
+    };
+    setUser(resetUser);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('pathfinder_user');
+      localStorage.removeItem('pathfinder_token');
+      localStorage.removeItem('pathfinder_preferences');
+    }
+  };
+
+  const saveAccessibilityProfile = async (newPrefs: Partial<AccessibilityPreferences>): Promise<UserProfile> => {
+    const updatedPrefs = { ...accessibilityPreferences, ...newPrefs };
+    const targetEmail = user.email || 'user@community.org';
+
+    const res = await fetch('/api/user/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: targetEmail, preferences: updatedPrefs }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to save accessibility profile');
+    }
+
+    const updatedUser: UserProfile = {
+      name: data.user.name,
+      email: data.user.email,
+      isLoggedIn: true,
+      hasCompletedProfile: true,
+    };
+
+    setUser(updatedUser);
+    if (data.user.accessibilityPreferences) {
+      setAccessibilityPreferences(data.user.accessibilityPreferences);
+      if (data.user.accessibilityPreferences.primaryPersona) {
+        setPersona(data.user.accessibilityPreferences.primaryPersona);
+      }
+      if (typeof data.user.accessibilityPreferences.needAudioPrompts === 'boolean') {
+        setIsVoicePromptActive(data.user.accessibilityPreferences.needAudioPrompts);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pathfinder_user', JSON.stringify(updatedUser));
+      if (data.user.accessibilityPreferences) {
+        localStorage.setItem('pathfinder_preferences', JSON.stringify(data.user.accessibilityPreferences));
+      }
+    }
+
+    return updatedUser;
+  };
   const [simulatedObstacle, setSimulatedObstacle] = useState({
     active: true,
     title: 'Main Central Elevator Maintenance',
@@ -383,6 +607,15 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
         speakText,
         persona,
         setPersona,
+        user,
+        accessibilityPreferences,
+        isOnboardingOpen,
+        openOnboarding,
+        closeOnboarding,
+        loginUser,
+        registerUser,
+        logoutUser,
+        saveAccessibilityProfile,
         simulatedObstacle,
         toggleSimulatedObstacle,
         barrierReports,

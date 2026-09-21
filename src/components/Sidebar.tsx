@@ -22,13 +22,18 @@ import {
   Heart,
   User,
   ShieldCheck,
-  MapPin
+  ShieldAlert,
+  MapPin,
+  LogOut,
+  LogIn,
+  Sliders,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/gps-precision', label: 'GPS Precision Map', icon: MapPin, badge: 'HIGH ACCURACY' },
   { href: '/', label: 'Route Planner', icon: Map },
   { href: '/micro-navigation', label: 'Micro-Navigation', icon: Compass },
+  { href: '/safety-routing', label: 'Safety Routing', icon: ShieldAlert, badge: 'NEW' },
   { href: '/live-adaptation-alert', label: 'Live Alert', icon: AlertTriangle, alert: true },
   { href: '/community-confidence', label: 'Community Confidence', icon: Users },
   { href: '/report-barrier', label: 'Report Barrier', icon: PlusCircle },
@@ -47,8 +52,21 @@ export default function Sidebar() {
     persona,
     setPersona,
     simulatedObstacle,
-    speakText
+    speakText,
+    user,
+    openOnboarding,
+    logoutUser,
   } = useAccessibility();
+
+  // Hide sidebar on landing, login, signup, and unauthenticated home route
+  if (
+    pathname === '/landing' ||
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    (!user.isLoggedIn && pathname === '/')
+  ) {
+    return null;
+  }
 
   const personas: { id: PersonaType; title: string; icon: React.ElementType }[] = [
     { id: 'wheelchair', title: 'Wheelchair', icon: Accessibility },
@@ -228,15 +246,50 @@ export default function Sidebar() {
         </div>
 
         {/* User Account */}
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-              <User className="w-4 h-4" />
+        <div className="p-3 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary text-xs font-black">
+                {user.name ? user.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-extrabold text-on-surface truncate max-w-[110px]">
+                  {user.isLoggedIn ? (user.name || 'Navigator') : 'Guest Navigator'}
+                </span>
+                <span className="text-[10px] text-secondary font-bold truncate">
+                  {user.hasCompletedProfile ? 'Profile Configured' : 'Needs Setup'}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-on-surface">Community Audit User</span>
-              <span className="text-[10px] text-secondary font-bold">Level 4 Navigator</span>
-            </div>
+
+            <button
+              type="button"
+              onClick={openOnboarding}
+              aria-label="Edit accessibility profile"
+              className="p-1.5 rounded-xl bg-surface-container-high hover:bg-surface-container text-primary transition-colors cursor-pointer"
+            >
+              <Sliders className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 pt-1">
+            <button
+              type="button"
+              onClick={openOnboarding}
+              className="flex-1 py-1.5 rounded-xl bg-primary/10 text-primary text-[11px] font-extrabold hover:bg-primary/20 transition-colors text-center cursor-pointer"
+            >
+              {user.isLoggedIn ? 'Edit Profile' : 'Log In / Register'}
+            </button>
+            {user.isLoggedIn && (
+              <button
+                type="button"
+                onClick={logoutUser}
+                aria-label="Log out"
+                className="p-1.5 rounded-xl bg-surface-container-high hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
