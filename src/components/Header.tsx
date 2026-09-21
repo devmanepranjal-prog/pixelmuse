@@ -14,16 +14,16 @@ import {
   AlertTriangle, 
   PlusCircle, 
   User,
-  Sliders
+  Sliders,
+  ShieldCheck
 } from 'lucide-react';
 
 const navItems = [
-  { href: '/', label: 'Route Planner', icon: Map },
-  { href: '/route-simulator', label: 'Route Simulator', icon: Radio },
+  { href: '/gps-precision', label: 'GPS Precision Map', icon: Map },
   { href: '/micro-navigation', label: 'Micro-Navigation', icon: Compass },
-  { href: '/community-confidence', label: 'Community Confidence', icon: Users },
+  { href: '/safety-routing', label: 'Safety Routing', icon: ShieldCheck },
   { href: '/live-adaptation-alert', label: 'Live Alert', icon: AlertTriangle },
-  { href: '/report-barrier', label: 'Report Barrier', icon: PlusCircle },
+  { href: '/community-confidence', label: 'Community Confidence', icon: Users },
 ];
 
 export default function Header() {

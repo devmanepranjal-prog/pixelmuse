@@ -70,6 +70,7 @@ const PERSONA_META: Record<PersonaType, { label: string; emoji: string; icon: Re
   'low-vision':  { label: 'Low Vision',  emoji: '👁️', icon: Eye },
   'older-adult': { label: 'Older Adult', emoji: '🧓', icon: Footprints },
   caregiver:     { label: 'Caregiver',   emoji: '🤝', icon: Heart },
+  none:          { label: 'Standard',    emoji: '🧭', icon: Navigation },
 };
 
 const SUB_SCORE_META = [

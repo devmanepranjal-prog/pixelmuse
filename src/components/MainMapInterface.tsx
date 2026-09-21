@@ -40,11 +40,12 @@ export default function MainMapInterface({
   const [activeTab, setActiveTab] = useState<'turn' | 'barriers' | 'elevation'>('turn');
   const [selectedHazard, setSelectedHazard] = useState<string | null>(null);
 
-  const personaIcons = {
+  const personaIcons: Record<string, React.ElementType> = {
     wheelchair: Accessibility,
     'older-adult': Footprints,
     'low-vision': Eye,
     caregiver: Heart,
+    none: Navigation,
   };
   const PersonaIcon = personaIcons[formValues.persona] || Accessibility;
 

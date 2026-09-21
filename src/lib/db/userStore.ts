@@ -233,6 +233,9 @@ function ensureDbExists(): UserRecord[] {
             },
           ],
           privacyConsent: { ...DEFAULT_PRIVACY },
+          privacySettings: { ...DEFAULT_PRIVACY_SETTINGS },
+          guardianLinks: [],
+          trips: [],
           activeTrip: {
             tripId: 'trip_live_99',
             source: 'Dadar Station South Concourse',
@@ -261,6 +264,9 @@ function ensureDbExists(): UserRecord[] {
           accessibilityPreferences: { ...DEFAULT_PREFERENCES },
           emergencyContacts: [],
           privacyConsent: { ...DEFAULT_PRIVACY },
+          privacySettings: { ...DEFAULT_PRIVACY_SETTINGS },
+          guardianLinks: [],
+          trips: [],
           activeTrip: null,
           tripHistory: [],
           parentAlerts: [

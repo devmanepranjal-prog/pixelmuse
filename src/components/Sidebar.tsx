@@ -30,7 +30,6 @@ import {
 
 const navItems = [
   { href: '/gps-precision', label: 'GPS Precision Map', icon: MapPin, badge: 'HIGH ACCURACY' },
-  { href: '/', label: 'Route Planner', icon: Map },
   { href: '/micro-navigation', label: 'Micro-Navigation', icon: Compass },
   { href: '/safety-routing', label: 'Safety Routing', icon: ShieldAlert, badge: 'NEW' },
   { href: '/live-adaptation-alert', label: 'Live Alert', icon: AlertTriangle, alert: true },
@@ -55,12 +54,12 @@ export default function Sidebar() {
     logoutUser,
   } = useAccessibility();
 
-  // Hide sidebar on landing, login, signup, and unauthenticated home route
+  // Hide sidebar on landing, login, signup, and home landing route
   if (
     pathname === '/landing' ||
     pathname === '/login' ||
     pathname === '/signup' ||
-    (!user.isLoggedIn && pathname === '/')
+    pathname === '/'
   ) {
     return null;
   }
@@ -115,7 +114,7 @@ export default function Sidebar() {
         </div>
 
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href === '/gps-precision' && pathname === '/');
           const Icon = item.icon;
           return (
             <Link

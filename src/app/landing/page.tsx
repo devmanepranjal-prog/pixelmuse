@@ -39,19 +39,36 @@ export default function LandingPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 text-xs font-extrabold text-on-surface transition-colors"
-          >
-            Log In
-          </Link>
+          {user.isLoggedIn ? (
+            <>
+              <span className="text-xs font-bold text-on-surface-variant hidden sm:inline">
+                Welcome, <span className="text-on-surface font-extrabold">{user.name || 'Navigator'}</span>
+              </span>
+              <Link
+                href="/gps-precision"
+                className="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-black shadow-sm hover:opacity-90 transition-opacity flex items-center gap-1.5"
+              >
+                <Compass className="w-4 h-4" />
+                <span>Go to Navigation Dashboard →</span>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 text-xs font-extrabold text-on-surface transition-colors"
+              >
+                Log In
+              </Link>
 
-          <Link
-            href="/signup"
-            className="px-5 py-2 rounded-xl bg-primary text-on-primary text-xs font-black shadow-sm hover:opacity-90 transition-opacity"
-          >
-            Sign Up & Set Profile
-          </Link>
+              <Link
+                href="/signup"
+                className="px-5 py-2 rounded-xl bg-primary text-on-primary text-xs font-black shadow-sm hover:opacity-90 transition-opacity"
+              >
+                Sign Up & Set Profile
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -77,21 +94,44 @@ export default function LandingPage() {
 
         {/* Primary Call-to-Actions */}
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-md">
-          <Link
-            href="/signup"
-            className="w-full sm:flex-1 h-14 rounded-2xl bg-primary text-on-primary font-black text-base flex items-center justify-center gap-2 shadow-lg hover:opacity-95 transition-opacity"
-          >
-            <span>Create Account & Setup Profile</span>
-            <ArrowRight className="w-5 h-5" />
-          </Link>
+          {user.isLoggedIn ? (
+            <>
+              <Link
+                href="/gps-precision"
+                className="w-full sm:flex-1 h-14 rounded-2xl bg-primary text-on-primary font-black text-base flex items-center justify-center gap-2 shadow-lg hover:opacity-95 transition-opacity"
+              >
+                <Compass className="w-5 h-5" />
+                <span>Open GPS Precision Map</span>
+                <ArrowRight className="w-5 h-5" />
+              </Link>
 
-          <Link
-            href="/login"
-            className="w-full sm:flex-1 h-14 rounded-2xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface font-extrabold text-base flex items-center justify-center gap-2 transition-colors"
-          >
-            <User className="w-5 h-5 text-primary" />
-            <span>Log In</span>
-          </Link>
+              <Link
+                href="/micro-navigation"
+                className="w-full sm:flex-1 h-14 rounded-2xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface font-extrabold text-base flex items-center justify-center gap-2 transition-colors"
+              >
+                <Navigation className="w-5 h-5 text-primary" />
+                <span>Micro-Nav HUD</span>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/signup"
+                className="w-full sm:flex-1 h-14 rounded-2xl bg-primary text-on-primary font-black text-base flex items-center justify-center gap-2 shadow-lg hover:opacity-95 transition-opacity"
+              >
+                <span>Create Account & Setup Profile</span>
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+
+              <Link
+                href="/login"
+                className="w-full sm:flex-1 h-14 rounded-2xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface font-extrabold text-base flex items-center justify-center gap-2 transition-colors"
+              >
+                <User className="w-5 h-5 text-primary" />
+                <span>Log In</span>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Feature Cards Grid */}
@@ -127,13 +167,13 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Quick Link to Dashboard Preview */}
+        {/* Quick Link to Dashboard */}
         <div className="pt-4">
           <Link
-            href="/"
+            href="/gps-precision"
             className="inline-flex items-center gap-2 text-xs font-extrabold text-primary hover:underline underline-offset-4"
           >
-            <span>Preview Main Dashboard & Route Planner →</span>
+            <span>Launch GPS Precision Map & Navigation Dashboard →</span>
           </Link>
         </div>
 

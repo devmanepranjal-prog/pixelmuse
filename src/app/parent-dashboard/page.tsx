@@ -437,7 +437,7 @@ export default function ParentDashboardPage() {
                     onClick={() => handleTriggerTestAlert('ROUTE_DEVIATION')}
                     className="px-3 py-1.5 rounded-xl bg-tertiary text-on-tertiary text-xs font-black shadow-xs hover:opacity-90 cursor-pointer"
                   >
-                    ⚠️ Route Deviation (>50m)
+                    ⚠️ Route Deviation (&gt;50m)
                   </button>
 
                   <button
@@ -445,7 +445,7 @@ export default function ParentDashboardPage() {
                     onClick={() => handleTriggerTestAlert('PROLONGED_STOP')}
                     className="px-3 py-1.5 rounded-xl bg-purple-700 text-white text-xs font-black shadow-xs hover:opacity-90 cursor-pointer"
                   >
-                    🛑 Prolonged Stop (>5m)
+                    🛑 Prolonged Stop (&gt;5m)
                   </button>
                 </div>
               </div>

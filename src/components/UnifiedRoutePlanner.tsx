@@ -1,16 +1,15 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useAccessibility } from '@/context/AccessibilityContext';
+import { useSearchParams } from 'next/navigation';
+import { useAccessibility, PersonaType, PERSONAS } from '@/context/AccessibilityContext';
 import InteractiveMap from '@/components/InteractiveMap';
 import SchematicRouteVisualizer from '@/components/SchematicRouteVisualizer';
+import PersonalizedProfileBanner from '@/components/PersonalizedProfileBanner';
 import {
   DEMO_LOCATIONS,
-  ACCESSIBILITY_PREFERENCES,
   BENCHMARK_SCENARIOS,
-  COMMUNITY_REPORTS,
-  AccessibilityPreferenceId,
   getRouteComparison,
   RouteScenarioData
 } from '@/data/routeSimulatorData';
@@ -52,10 +51,20 @@ interface UnifiedRoutePlannerProps {
 }
 
 export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRoutePlannerProps) {
-  const { speakText, simulatedObstacle, toggleSimulatedObstacle } = useAccessibility();
+  const { speakText, simulatedObstacle, persona } = useAccessibility();
+  const searchParams = useSearchParams();
+
+  const urlDest = searchParams?.get('dest');
+  const urlPersona = searchParams?.get('persona') as PersonaType | null;
+  const urlMode = searchParams?.get('mode') as 'gps' | 'manual' | null;
+
+  // Resolve initial destination from query param if provided
+  const initialDest = DEMO_LOCATIONS.find(
+    l => l.id === urlDest || l.name.toLowerCase() === urlDest?.toLowerCase()
+  )?.name || 'Shivaji Park';
 
   // Mode state: 'gps' uses detected GPS location, 'manual' unlocks dropdown
-  const [locationMode, setLocationMode] = useState<'gps' | 'manual'>(initialMode);
+  const [locationMode, setLocationMode] = useState<'gps' | 'manual'>(urlMode || initialMode);
 
   // GPS Precision state
   const [gpsAccuracyMeters, setGpsAccuracyMeters] = useState<number>(0.5);
@@ -65,43 +74,23 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
 
   // Route Setup state
   const [startLocation, setStartLocation] = useState<string>('Dadar Railway Station');
-  const [destLocation, setDestLocation] = useState<string>('Shivaji Park');
-  const [preference, setPreference] = useState<AccessibilityPreferenceId>('wheelchair');
+  const [destLocation, setDestLocation] = useState<string>(initialDest);
+  const [preference, setPreference] = useState<PersonaType>(
+    urlPersona && PERSONAS.some(p => p.id === urlPersona) ? urlPersona : (persona || 'wheelchair')
+  );
+
+  // Automatically inherit saved profile persona if updated in session
+  useEffect(() => {
+    if (persona && !urlPersona) {
+      setPreference(persona);
+    }
+  }, [persona, urlPersona]);
 
   // Animation and calculation states
   const [isComparing, setIsComparing] = useState<boolean>(false);
   const [hasCompared, setHasCompared] = useState<boolean>(true);
   const [scenarioIndex, setScenarioIndex] = useState<number>(0);
   const [visualizerView, setVisualizerView] = useState<'both' | 'normal' | 'accessible'>('both');
-  const [showObstacleMatrix, setShowObstacleMatrix] = useState<boolean>(false);
-
-  // Preserve existing obstacle scenarios to ensure zero breaking changes
-  const [legacyScenarios, setLegacyScenarios] = useState([
-    {
-      id: 'elev',
-      title: 'Elevator B Maintenance Outage',
-      description: 'Main passenger lift in Sector 3 disabled. Forces step-free reroute via Ramp C.',
-      icon: Building,
-      detour: '+3 mins',
-      active: simulatedObstacle.active,
-    },
-    {
-      id: 'rain',
-      title: 'Wet Ramp / Rain Friction Loss',
-      description: 'Surface friction warning on 4.5% West Incline. Recommends covered concourse.',
-      icon: CloudRain,
-      detour: '+2 mins',
-      active: false,
-    },
-    {
-      id: 'crowd',
-      title: 'High Density Crowd Congestion',
-      description: 'Peak event congestion at Main Gate. Auto-selects low-sensory quiet side corridor.',
-      icon: Users,
-      detour: '+1 min',
-      active: false,
-    },
-  ]);
 
   // Section references for smooth scrolling
   const routeSetupRef = useRef<HTMLDivElement>(null);
@@ -198,37 +187,24 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
     handleCompare();
   };
 
-  const toggleLegacyScenario = (id: string) => {
-    setLegacyScenarios(prev =>
-      prev.map(sc => {
-        if (sc.id === id) {
-          const nextState = !sc.active;
-          if (id === 'elev') toggleSimulatedObstacle();
-          speakText(`Simulation scenario ${sc.title} set to ${nextState ? 'active' : 'inactive'}`);
-          return { ...sc, active: nextState };
-        }
-        return sc;
-      })
-    );
-  };
-
-  const getPreferenceIcon = (id: AccessibilityPreferenceId) => {
+  const getPreferenceIcon = (id: PersonaType) => {
     switch (id) {
       case 'wheelchair': return <Accessibility className="w-5 h-5" />;
-      case 'reduced-mobility': return <Footprints className="w-5 h-5" />;
-      case 'elderly': return <UserCheck className="w-5 h-5" />;
-      case 'visual-impairment': return <Eye className="w-5 h-5" />;
-      case 'stroller': return <Heart className="w-5 h-5" />;
+      case 'older-adult': return <Footprints className="w-5 h-5" />;
+      case 'low-vision': return <Eye className="w-5 h-5" />;
+      case 'caregiver': return <Heart className="w-5 h-5" />;
       default: return <Navigation className="w-5 h-5" />;
     }
   };
 
-  const selectedPrefObj = ACCESSIBILITY_PREFERENCES.find(p => p.id === preference) || ACCESSIBILITY_PREFERENCES[0];
+  const selectedPrefObj = PERSONAS.find(p => p.id === preference) || PERSONAS[0];
 
   return (
     <div className="w-full px-4 md:px-8 py-8 flex justify-center bg-surface">
-      <div className="w-full max-w-[1150px] flex flex-col gap-10">
-        
+      <div className="w-full max-w-[1150px] flex flex-col gap-8">
+        {/* Personalized Profile Header Banner with Edit Profile CTA */}
+        <PersonalizedProfileBanner />
+
         {/* ========================================================================= */}
         {/* UNIFIED HERO HEADER                                                       */}
         {/* ========================================================================= */}
@@ -615,7 +591,7 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-                {ACCESSIBILITY_PREFERENCES.map((pref) => {
+                {PERSONAS.map((pref) => {
                   const isActive = preference === pref.id;
                   return (
                     <button
@@ -1121,172 +1097,6 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
             <p className="text-white/80 text-sm font-semibold max-w-[600px] mt-1">
               Standard routers penalize distance over dignity. PathFinder calculates pedestrian routes that ensure everyone reaches their destination safely.
             </p>
-          </div>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* SECTION 6: "COMMUNITY-REPORTED CONDITIONS" & OBSTACLE SIMULATION           */}
-        {/* ========================================================================= */}
-        <section aria-labelledby="section-community-data" className="flex flex-col gap-6 pt-4 border-t border-outline-variant/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
-                6
-              </div>
-              <div>
-                <h2 id="section-community-data" className="text-xl md:text-2xl font-black text-on-surface">
-                  Community-Reported Conditions & Obstacle Sandbox
-                </h2>
-                <p className="text-xs text-on-surface-variant font-medium">
-                  Verified crowd reports feeding into dynamic real-time adaptation algorithms.
-                </p>
-              </div>
-            </div>
-
-            <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-              Simulated Civic Crowd-Data
-            </span>
-          </div>
-
-          {/* Community Reports Grid */}
-          <div className="p-6 md:p-8 bg-surface-container-lowest rounded-3xl border border-outline-variant/40 shadow-sm flex flex-col gap-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {COMMUNITY_REPORTS.map((report) => {
-                const isVerified = report.status === 'Verified';
-                return (
-                  <div
-                    key={report.id}
-                    className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex flex-col justify-between gap-3 hover:border-outline transition-colors"
-                  >
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                          isVerified
-                            ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200'
-                            : 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200'
-                        }`}>
-                          {report.status}
-                        </span>
-                        <span className="text-[10px] text-on-surface-variant font-bold">
-                          {report.timeAgo}
-                        </span>
-                      </div>
-
-                      <h4 className="text-xs font-black text-on-surface mt-1 leading-snug">
-                        {report.title}
-                      </h4>
-                      <p className="text-[11px] text-on-surface-variant">
-                        📍 {report.location}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20 text-[10px] font-bold text-on-surface-variant">
-                      <span className="flex items-center gap-1 text-secondary">
-                        <ShieldCheck className="w-3 h-3" />
-                        {report.confidence}% confidence
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <ThumbsUp className="w-3 h-3" />
-                        {report.upvotes}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between pt-2 text-xs font-bold text-on-surface-variant">
-              <span>Have an obstruction to report near you?</span>
-              <Link
-                href="/report-barrier"
-                className="text-primary hover:underline flex items-center gap-1 font-extrabold"
-              >
-                Report a Hazard or Barrier →
-              </Link>
-            </div>
-          </div>
-
-          {/* Preserved Live Obstacle Injection Sandbox Card */}
-          <div className="p-6 rounded-3xl bg-surface-container-low border border-outline-variant/40 flex flex-col gap-4">
-            <div
-              onClick={() => setShowObstacleMatrix(!showObstacleMatrix)}
-              className="flex items-center justify-between cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5">
-                <Building className="w-5 h-5 text-primary" />
-                <div>
-                  <h3 className="text-base font-black text-on-surface">
-                    Live Obstacle Injection Sandbox
-                  </h3>
-                  <p className="text-xs text-on-surface-variant font-medium">
-                    Trigger live disruptions (Elevator maintenance, Wet ramps, Crowds) to test dynamic navigation reroutes.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="p-2 rounded-xl bg-surface-container-lowest text-on-surface border border-outline-variant/30"
-                aria-label="Toggle obstacle sandbox"
-              >
-                <ChevronDown className={`w-4 h-4 transition-transform ${showObstacleMatrix ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
-
-            {showObstacleMatrix && (
-              <div className="flex flex-col gap-4 pt-3 border-t border-outline-variant/30">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {legacyScenarios.map((sc) => {
-                    const Icon = sc.icon;
-                    return (
-                      <div
-                        key={sc.id}
-                        onClick={() => toggleLegacyScenario(sc.id)}
-                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                          sc.active
-                            ? 'bg-tertiary-container/15 border-tertiary shadow-xs'
-                            : 'bg-surface-container-lowest border-outline-variant/30 hover:border-outline'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                            sc.active ? 'bg-tertiary text-on-tertiary' : 'bg-surface-container text-on-surface-variant'
-                          }`}>
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <h4 className="font-extrabold text-xs text-on-surface">{sc.title}</h4>
-                            </div>
-                            <span className="text-[10px] font-bold text-on-surface-variant block mt-0.5">
-                              Detour: {sc.detour}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className={`w-10 h-6 rounded-full p-0.5 transition-colors flex items-center ${
-                          sc.active ? 'bg-tertiary justify-end' : 'bg-outline-variant justify-start'
-                        }`}>
-                          <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-xs font-bold text-on-surface-variant">
-                    {simulatedObstacle.active ? '⚠️ Obstacle Active: Elevator outage triggered' : '✓ Standard conditions active'}
-                  </span>
-                  <Link
-                    href="/live-adaptation-alert"
-                    className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-1.5 shadow-xs hover:opacity-90"
-                  >
-                    <Navigation className="w-3.5 h-3.5" />
-                    <span>Test Live Reroute Banner →</span>
-                  </Link>
-                </div>
-              </div>
-            )}
           </div>
         </section>
 

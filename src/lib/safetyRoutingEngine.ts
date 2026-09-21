@@ -226,6 +226,10 @@ export function getPersonaSuitability(
       const hasNarrowPath = segs.some(s => s.footpathWidthCm < 120);
       return !hasMissingPath && !hasNarrowPath;
     }
+
+    case 'none':
+    default:
+      return true;
   }
 }
 
@@ -257,6 +261,7 @@ export function rankRoutesForPersona(
       'low-vision': getPersonaSuitability(route, 'low-vision'),
       'older-adult': getPersonaSuitability(route, 'older-adult'),
       'caregiver': getPersonaSuitability(route, 'caregiver'),
+      'none': getPersonaSuitability(route, 'none'),
     };
     return {
       ...route,
@@ -349,7 +354,7 @@ const SEGMENTS = RAW_SEGMENTS.map(s => scoreSegment(s, false));
 
 const getSegs = (...ids: string[]) => SEGMENTS.filter(s => ids.includes(s.id));
 
-const ALL_PERSONAS: PersonaType[] = ['wheelchair', 'low-vision', 'older-adult', 'caregiver'];
+const ALL_PERSONAS: PersonaType[] = ['wheelchair', 'low-vision', 'older-adult', 'caregiver', 'none'];
 
 function buildRoute(
   routeId: string,

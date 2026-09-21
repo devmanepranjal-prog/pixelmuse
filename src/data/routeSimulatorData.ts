@@ -1,3 +1,5 @@
+import { PersonaType, PERSONAS } from '@/context/AccessibilityContext';
+
 export interface LocationOption {
   id: string;
   name: string;
@@ -6,21 +8,16 @@ export interface LocationOption {
   approxDistanceBaseKm?: number;
 }
 
-export type AccessibilityPreferenceId =
-  | 'wheelchair'
-  | 'reduced-mobility'
-  | 'elderly'
-  | 'visual-impairment'
-  | 'stroller'
-  | 'none';
+/**
+ * Re-export PersonaType as AccessibilityPreferenceId for backward compatibility.
+ * The canonical definition lives in AccessibilityContext.
+ */
+export type AccessibilityPreferenceId = PersonaType;
 
-export interface AccessibilityPreference {
-  id: AccessibilityPreferenceId;
-  label: string;
-  iconName: string;
-  priorities: string[];
-  description: string;
-}
+/**
+ * Re-export PERSONAS as ACCESSIBILITY_PREFERENCES for backward compatibility.
+ */
+export const ACCESSIBILITY_PREFERENCES = PERSONAS;
 
 export interface RouteMetrics {
   distance: number; // km
@@ -97,51 +94,9 @@ export const DEMO_LOCATIONS: LocationOption[] = [
   { id: 'hyderabad-hitech-city', name: 'Hyderabad Hitech City', region: 'Other Metro', description: 'Technology hub with elevated pedestrian skywalks in Cyberabad' },
 ];
 
-// 2. Accessibility Preferences
-export const ACCESSIBILITY_PREFERENCES: AccessibilityPreference[] = [
-  {
-    id: 'wheelchair',
-    label: 'Wheelchair user',
-    iconName: 'Accessibility',
-    priorities: ['0 stairs / 100% step-free', 'Max 5% gentle slopes', 'Zero physical barriers', 'Accessible ramps & wide entrances', 'Controlled crossings'],
-    description: 'Prioritizes step-free paths, low gradient slopes, elevator access, and curb cut ramps.'
-  },
-  {
-    id: 'reduced-mobility',
-    label: 'Reduced mobility',
-    iconName: 'Footprints',
-    priorities: ['Fewer or no stairs', 'Low slopes & handrails', 'Minimal obstacles', 'Step-free alternatives', 'Safe pedestrian crossings'],
-    description: 'Designed for users with crutches, braces, or limited walking stamina.'
-  },
-  {
-    id: 'elderly',
-    label: 'Elderly user',
-    iconName: 'UserCheck',
-    priorities: ['Fewer stairs', 'Lower slope gradients', 'Shorter walking bursts with benches', 'Well-signalized pedestrian crossings'],
-    description: 'Prioritizes gradual inclines, resting spots, shaded walks, and safe traffic crossings.'
-  },
-  {
-    id: 'visual-impairment',
-    label: 'Visual impairment',
-    iconName: 'Eye',
-    priorities: ['Audible / tactile safe crossings', 'Simpler linear routes', 'Fewer complex multi-lane intersections', 'Tactile paving infrastructure'],
-    description: 'Focuses on tactile ground indicators, predictable walkway geometry, and low-traffic crosswalks.'
-  },
-  {
-    id: 'stroller',
-    label: 'Caregiver with stroller',
-    iconName: 'Heart',
-    priorities: ['No step curbs', 'Wide sidewalks (>1.2m)', 'Smooth paving', 'Elevator & ramp routing'],
-    description: 'Avoids turnstiles, stepped footbridges, and steep stairways for smooth wheeled transport.'
-  },
-  {
-    id: 'none',
-    label: 'No accessibility preference',
-    iconName: 'Navigation',
-    priorities: ['Shortest total distance', 'Direct geometric route', 'Standard city sidewalks'],
-    description: 'Calculates standard shortest walking routes without accessibility constraints.'
-  }
-];
+// 2. Accessibility Preferences — now sourced from the unified PERSONAS in AccessibilityContext.
+//    The re-export at the top of this file (ACCESSIBILITY_PREFERENCES = PERSONAS) ensures
+//    existing consumers continue to work without code changes.
 
 // 3. Predefined Benchmark Scenarios
 export const BENCHMARK_SCENARIOS: Record<string, RouteScenarioData> = {
@@ -555,7 +510,7 @@ export function getRouteComparison(
 
   const accessibleDist = Number((baseDist + addedDistKm).toFixed(1));
   const accessibleTime = baseMins + addedTimeMin;
-  const accessibleStairs = prefId === 'wheelchair' || prefId === 'stroller' ? 0 : Math.max(0, normalStairs - 3);
+  const accessibleStairs = prefId === 'wheelchair' || prefId === 'caregiver' ? 0 : Math.max(0, normalStairs - 3);
   const accessibleSlope = 4 + (hash % 2); // 4 - 5%
   const accessibleBarriers = Math.max(1, Math.floor(normalBarriers / 4));
   const accessibleCrossings = 1;
@@ -613,7 +568,7 @@ function adjustForPreference(data: RouteScenarioData, prefId: AccessibilityPrefe
     };
   }
 
-  if (prefId === 'elderly') {
+  if (prefId === 'older-adult') {
     return {
       ...data,
       accessible: {
@@ -624,7 +579,7 @@ function adjustForPreference(data: RouteScenarioData, prefId: AccessibilityPrefe
     };
   }
 
-  if (prefId === 'visual-impairment') {
+  if (prefId === 'low-vision') {
     return {
       ...data,
       accessible: {

@@ -19,8 +19,62 @@ import { triggerActiveBarrierRecalculation } from '@/lib/routeRecalculator';
 import { sessionRegistry } from '@/lib/navigationSessionRegistry';
 import { realtimeClient } from '@/lib/realtimeClient';
 
-export type PersonaType = 'wheelchair' | 'older-adult' | 'low-vision' | 'caregiver';
+export type PersonaType = 'wheelchair' | 'older-adult' | 'low-vision' | 'caregiver' | 'none';
 export type FontScale = 'sm' | 'md' | 'lg';
+
+/**
+ * Unified Persona Taxonomy — single source of truth.
+ * All UI components that render persona selectors must import this array
+ * instead of defining their own ad-hoc lists.
+ *
+ * iconName values correspond to lucide-react component names so that
+ * consumers can dynamically resolve the icon component.
+ */
+export interface PersonaDefinition {
+  id: PersonaType;
+  label: string;
+  iconName: string;          // lucide-react icon component name
+  priorities: string[];
+  description: string;
+}
+
+export const PERSONAS: PersonaDefinition[] = [
+  {
+    id: 'wheelchair',
+    label: 'Wheelchair user',
+    iconName: 'Accessibility',
+    priorities: ['0 stairs / 100% step-free', 'Max 5% gentle slopes', 'Zero physical barriers', 'Accessible ramps & wide entrances', 'Controlled crossings'],
+    description: 'Prioritizes step-free paths, low gradient slopes, elevator access, and curb cut ramps.',
+  },
+  {
+    id: 'older-adult',
+    label: 'Older Adult / Reduced Mobility',
+    iconName: 'Footprints',
+    priorities: ['Fewer or no stairs', 'Low slopes & handrails', 'Minimal obstacles', 'Step-free alternatives', 'Safe pedestrian crossings'],
+    description: 'Designed for elderly users, those with crutches, braces, or limited walking stamina.',
+  },
+  {
+    id: 'low-vision',
+    label: 'Low Vision / Visual Impairment',
+    iconName: 'Eye',
+    priorities: ['Audible / tactile safe crossings', 'Simpler linear routes', 'Fewer complex multi-lane intersections', 'Tactile paving infrastructure'],
+    description: 'Focuses on tactile ground indicators, predictable walkway geometry, and low-traffic crosswalks.',
+  },
+  {
+    id: 'caregiver',
+    label: 'Caregiver / Stroller',
+    iconName: 'Heart',
+    priorities: ['No step curbs', 'Wide sidewalks (>1.2m)', 'Smooth paving', 'Elevator & ramp routing'],
+    description: 'Avoids turnstiles, stepped footbridges, and steep stairways for smooth wheeled transport.',
+  },
+  {
+    id: 'none',
+    label: 'No accessibility preference',
+    iconName: 'Navigation',
+    priorities: ['Shortest total distance', 'Direct geometric route', 'Standard city sidewalks'],
+    description: 'Calculates standard shortest walking routes without accessibility constraints.',
+  },
+];
 
 export interface UserProfile {
   name: string;

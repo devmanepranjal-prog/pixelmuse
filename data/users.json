@@ -19,7 +19,27 @@
       "maxWalkingDistanceMeters": 1000
     },
     "createdAt": "2026-09-21T09:58:29.805Z",
-    "updatedAt": "2026-09-21T09:58:29.805Z"
+    "updatedAt": "2026-09-21T09:58:29.805Z",
+    "pairingCode": "494-849",
+    "linkedParentEmail": null,
+    "linkedChildrenEmails": [],
+    "emergencyContacts": [],
+    "privacyConsent": {
+      "allowRealtimeLocation": true,
+      "allowTripHistory": true,
+      "allowAlerts": true
+    },
+    "privacySettings": {
+      "allowRealtimeLocation": true,
+      "allowTripHistory": true,
+      "allowAlerts": true,
+      "shareAccessibilityPreferences": true
+    },
+    "activeTrip": null,
+    "tripHistory": [],
+    "parentAlerts": [],
+    "guardianLinks": [],
+    "trips": []
   },
   {
     "id": "usr_1789984709808_h6ez1",
@@ -41,6 +61,69 @@
       "maxWalkingDistanceMeters": 1000
     },
     "createdAt": "2026-09-21T09:58:29.808Z",
-    "updatedAt": "2026-09-21T09:59:09.882Z"
+    "updatedAt": "2026-09-21T09:59:09.882Z",
+    "pairingCode": "274-552",
+    "linkedParentEmail": null,
+    "linkedChildrenEmails": [],
+    "emergencyContacts": [],
+    "privacyConsent": {
+      "allowRealtimeLocation": true,
+      "allowTripHistory": true,
+      "allowAlerts": true
+    },
+    "privacySettings": {
+      "allowRealtimeLocation": true,
+      "allowTripHistory": true,
+      "allowAlerts": true,
+      "shareAccessibilityPreferences": true
+    },
+    "activeTrip": null,
+    "tripHistory": [],
+    "parentAlerts": [],
+    "guardianLinks": [],
+    "trips": []
+  },
+  {
+    "id": "usr_1790012626125_h387d",
+    "name": "darefger",
+    "email": "devmanepranjal1@gmail.com",
+    "passwordHash": "c868252d98faa0e9b42711f4301e65628d253cbd9f9adf20cf221b6795e0834e",
+    "role": "user",
+    "pairingCode": "695-728",
+    "linkedParentEmail": null,
+    "linkedChildrenEmails": [],
+    "hasCompletedProfile": true,
+    "accessibilityPreferences": {
+      "primaryPersona": "low-vision",
+      "mobilityType": "stroller",
+      "requireStepFree": true,
+      "maxSlopePercent": 4,
+      "preferLowerSlopes": true,
+      "preferReducedDistance": true,
+      "preferSaferCrossings": true,
+      "avoidStairs": true,
+      "needTactilePaving": false,
+      "needAudioPrompts": true,
+      "maxWalkingDistanceMeters": 1000
+    },
+    "emergencyContacts": [],
+    "privacyConsent": {
+      "allowRealtimeLocation": true,
+      "allowTripHistory": true,
+      "allowAlerts": true
+    },
+    "privacySettings": {
+      "allowRealtimeLocation": true,
+      "allowTripHistory": true,
+      "allowAlerts": true,
+      "shareAccessibilityPreferences": true
+    },
+    "activeTrip": null,
+    "tripHistory": [],
+    "parentAlerts": [],
+    "guardianLinks": [],
+    "trips": [],
+    "createdAt": "2026-09-21T17:43:46.125Z",
+    "updatedAt": "2026-09-21T17:44:03.957Z"
   }
 ]
