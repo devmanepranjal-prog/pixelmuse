@@ -1,5 +1,4 @@
 import { Coordinates, calculateHaversineDistance, getQuadKey } from './spatial';
-import { computeBarrierConfidence } from './confidence';
 
 export type RoadLayer = 'flyover' | 'service_road' | 'at_grade';
 
@@ -23,16 +22,6 @@ export interface IndianBarrierReport {
   quadKey: string;
   clusterCount: number;
   isExpired: boolean;
-  source: string;
-  photoAttached: boolean;
-  photoUrl?: string;
-  aiVerification?: {
-    verified: boolean;
-    label: string;
-    confidence: number;
-    details?: string;
-  };
-  confidenceScore: number;
 }
 
 export const CATEGORY_TTL_SECONDS: Record<string, number> = {
@@ -62,8 +51,7 @@ export function getDefaultTtlForCategory(category: string): number {
 }
 
 /**
- * Creates a brand new IndianBarrierReport object initialized with spatial index, TTL bounds,
- * photo proof verification, and calculated accessibility confidence score.
+ * Creates a brand new IndianBarrierReport object initialized with spatial index and TTL bounds.
  */
 export function createBarrierReport(input: {
   title: string;
@@ -73,35 +61,11 @@ export function createBarrierReport(input: {
   description?: string;
   coordinates?: Coordinates;
   roadLayer?: RoadLayer;
-  source?: string;
-  photoAttached?: boolean;
-  photoUrl?: string;
-  aiVerification?: {
-    verified: boolean;
-    label: string;
-    confidence: number;
-    details?: string;
-  };
 }): IndianBarrierReport {
   const now = Date.now();
   const ttl = getDefaultTtlForCategory(input.category);
   const coords = input.coordinates || { lat: 19.0760, lng: 72.8777 }; // Default Mumbai / Urban core lat/lng
   const layer = input.roadLayer || 'at_grade';
-  const src = input.source || 'Community Navigator';
-  const hasPhoto = input.photoAttached ?? Boolean(input.photoUrl);
-
-  const initialVotes = 1;
-  const initialDownvotes = 0;
-
-  const trustResult = computeBarrierConfidence({
-    source: src,
-    createdAt: now,
-    votes: initialVotes,
-    downvotes: initialDownvotes,
-    photoAttached: hasPhoto,
-    photoUrl: input.photoUrl,
-    aiVerification: input.aiVerification,
-  });
 
   return {
     id: `rep-${now}-${Math.floor(Math.random() * 1000)}`,
@@ -110,8 +74,8 @@ export function createBarrierReport(input: {
     severity: input.severity || 'high',
     location: input.location,
     status: 'Reported',
-    votes: initialVotes,
-    downvotes: initialDownvotes,
+    votes: 1,
+    downvotes: 0,
     date: 'Just now',
     createdAt: now,
     expiresAt: now + ttl * 1000,
@@ -123,11 +87,6 @@ export function createBarrierReport(input: {
     quadKey: getQuadKey(coords),
     clusterCount: 1,
     isExpired: false,
-    source: src,
-    photoAttached: hasPhoto,
-    photoUrl: input.photoUrl,
-    aiVerification: input.aiVerification,
-    confidenceScore: trustResult.score,
   };
 }
 
@@ -147,15 +106,6 @@ export function processIncomingBarrierReport(
     description?: string;
     coordinates?: Coordinates;
     roadLayer?: RoadLayer;
-    source?: string;
-    photoAttached?: boolean;
-    photoUrl?: string;
-    aiVerification?: {
-      verified: boolean;
-      label: string;
-      confidence: number;
-      details?: string;
-    };
   },
   clusteringRadiusMeters: number = 20
 ): { updatedReports: IndianBarrierReport[]; merged: boolean; targetId: string } {
@@ -181,34 +131,16 @@ export function processIncomingBarrierReport(
     const ttlBonus = 1800 * 1000; // +30 minutes
     const maxExpiry = now + existing.initialTtlSeconds * 2000; // Max cap 2x initial TTL
     const newExpiresAt = Math.min(existing.expiresAt + ttlBonus, maxExpiry);
-    const newVotes = existing.votes + 1;
-    const hasPhoto = existing.photoAttached || Boolean(newInput.photoUrl || newInput.photoAttached);
-    const resolvedPhotoUrl = existing.photoUrl || newInput.photoUrl;
-    const aiCheck = existing.aiVerification || newInput.aiVerification;
-
-    const trustResult = computeBarrierConfidence({
-      source: existing.source,
-      createdAt: existing.createdAt,
-      votes: newVotes,
-      downvotes: existing.downvotes,
-      photoAttached: hasPhoto,
-      photoUrl: resolvedPhotoUrl,
-      aiVerification: aiCheck,
-    });
 
     const updatedMerged: IndianBarrierReport = {
       ...existing,
-      votes: newVotes,
+      votes: existing.votes + 1,
       clusterCount: existing.clusterCount + 1,
       expiresAt: newExpiresAt,
       ttlSeconds: Math.max(0, Math.floor((newExpiresAt - now) / 1000)),
       date: 'Updated just now',
       description: `${existing.description} | Re-confirmed by community navigator.`,
-      status: newVotes >= 3 ? 'Verified' : existing.status,
-      photoAttached: hasPhoto,
-      photoUrl: resolvedPhotoUrl,
-      aiVerification: aiCheck,
-      confidenceScore: trustResult.score,
+      status: existing.votes + 1 >= 3 ? 'Verified' : existing.status,
     };
 
     const nextList = [...existingReports];
@@ -223,7 +155,6 @@ export function processIncomingBarrierReport(
 
 /**
  * Upvote handler: extends TTL by 30 mins and updates status to Verified if votes >= 3.
- * Dynamically recomputes confidence score.
  */
 export function upvoteBarrier(reports: IndianBarrierReport[], id: string): IndianBarrierReport[] {
   const now = Date.now();
@@ -233,24 +164,12 @@ export function upvoteBarrier(reports: IndianBarrierReport[], id: string): India
     const maxExpiresAt = now + r.initialTtlSeconds * 2000;
     const newExpiresAt = Math.min(r.expiresAt + extensionMs, maxExpiresAt);
     const newVotes = r.votes + 1;
-
-    const trustResult = computeBarrierConfidence({
-      source: r.source,
-      createdAt: r.createdAt,
-      votes: newVotes,
-      downvotes: r.downvotes,
-      photoAttached: r.photoAttached,
-      photoUrl: r.photoUrl,
-      aiVerification: r.aiVerification,
-    });
-
     return {
       ...r,
       votes: newVotes,
       expiresAt: newExpiresAt,
       ttlSeconds: Math.max(0, Math.floor((newExpiresAt - now) / 1000)),
       status: newVotes >= 3 ? 'Verified' : r.status,
-      confidenceScore: trustResult.score,
     };
   });
 }
@@ -258,7 +177,6 @@ export function upvoteBarrier(reports: IndianBarrierReport[], id: string): India
 /**
  * Downvote handler: reduces TTL by 45 mins (-2700s).
  * Auto-expires if downvotes > votes + 2 or TTL <= 0.
- * Dynamically recomputes confidence score.
  */
 export function downvoteBarrier(reports: IndianBarrierReport[], id: string): IndianBarrierReport[] {
   const now = Date.now();
@@ -269,16 +187,6 @@ export function downvoteBarrier(reports: IndianBarrierReport[], id: string): Ind
     const newDownvotes = r.downvotes + 1;
     const isExpired = newExpiresAt <= now || newDownvotes >= r.votes + 3;
 
-    const trustResult = computeBarrierConfidence({
-      source: r.source,
-      createdAt: r.createdAt,
-      votes: r.votes,
-      downvotes: newDownvotes,
-      photoAttached: r.photoAttached,
-      photoUrl: r.photoUrl,
-      aiVerification: r.aiVerification,
-    });
-
     return {
       ...r,
       downvotes: newDownvotes,
@@ -286,7 +194,6 @@ export function downvoteBarrier(reports: IndianBarrierReport[], id: string): Ind
       ttlSeconds: Math.max(0, Math.floor((newExpiresAt - now) / 1000)),
       isExpired,
       status: isExpired ? 'Expired' : r.status,
-      confidenceScore: trustResult.score,
     };
   });
 }

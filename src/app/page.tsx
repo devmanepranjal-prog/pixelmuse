@@ -21,8 +21,7 @@ import {
   Accessibility,
   Eye,
   Heart,
-  Maximize2,
-  Camera
+  Maximize2
 } from 'lucide-react';
 
 interface PreferenceState {
@@ -347,19 +346,8 @@ export default function RoutePlannerPage() {
                   1
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between flex-wrap gap-1">
-                    <div className="font-bold text-sm text-on-surface">Enter South Accessible Entrance</div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                        98% Trust
-                      </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-                        <Camera className="w-2.5 h-2.5" />
-                        <span>Photo Proof</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-on-surface-variant font-medium mt-0.5">
+                  <div className="font-bold text-sm text-on-surface">Enter South Accessible Entrance</div>
+                  <div className="text-xs text-on-surface-variant font-medium">
                     110cm wide automatic sliding door with tactile floor indicator strip.
                   </div>
                 </div>
@@ -370,24 +358,9 @@ export default function RoutePlannerPage() {
                   2
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between flex-wrap gap-1">
-                    <div className="font-bold text-sm text-on-surface">Ascend Concourse Ramp C</div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                        97% Trust (Ramp)
-                      </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-                        <Camera className="w-2.5 h-2.5" />
-                        <span>Photo Proof</span>
-                      </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 flex items-center gap-1">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        <span>AI Verified</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-on-surface-variant font-medium mt-0.5">
-                    Gentle 3.5% incline with dual stainless steel handrails &amp; continuous grip floor.
+                  <div className="font-bold text-sm text-on-surface">Ascend Concourse Ramp C</div>
+                  <div className="text-xs text-on-surface-variant font-medium">
+                    Gentle 3.5% incline with dual stainless steel handrails & continuous grip floor.
                   </div>
                 </div>
               </div>
@@ -397,23 +370,8 @@ export default function RoutePlannerPage() {
                   3
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between flex-wrap gap-1">
-                    <div className="font-bold text-sm text-on-surface">Elevator B to 3rd Floor</div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                        96% Trust (Lift)
-                      </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-                        <Camera className="w-2.5 h-2.5" />
-                        <span>Photo Proof</span>
-                      </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 flex items-center gap-1">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        <span>AI Verified</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-on-surface-variant font-medium mt-0.5">
+                  <div className="font-bold text-sm text-on-surface">Elevator B to 3rd Floor</div>
+                  <div className="text-xs text-on-surface-variant font-medium">
                     Braille buttons at 100cm height + voice floor announcement.
                   </div>
                 </div>
@@ -429,14 +387,6 @@ export default function RoutePlannerPage() {
             >
               <Navigation className="w-5 h-5 fill-current" />
               <span>Start Micro-Navigation</span>
-            </Link>
-            
-            <Link
-              href="/route-simulator"
-              className="px-6 h-14 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 font-bold text-sm text-on-surface flex items-center justify-center gap-2 transition-colors"
-            >
-              <Sliders className="w-5 h-5 text-primary" />
-              <span>Simulate Reroute</span>
             </Link>
           </div>
         </section>

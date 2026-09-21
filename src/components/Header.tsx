@@ -7,21 +7,17 @@ import {
   CheckCircle2, 
   Navigation, 
   Map, 
-  Radio, 
   Compass, 
   Users, 
   AlertTriangle, 
-  PlusCircle, 
   User 
 } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Route Planner', icon: Map },
-  { href: '/route-simulator', label: 'Route Simulator', icon: Radio },
   { href: '/micro-navigation', label: 'Micro-Navigation', icon: Compass },
   { href: '/community-confidence', label: 'Community Confidence', icon: Users },
   { href: '/live-adaptation-alert', label: 'Live Alert', icon: AlertTriangle },
-  { href: '/report-barrier', label: 'Report Barrier', icon: PlusCircle },
 ];
 
 export default function Header() {

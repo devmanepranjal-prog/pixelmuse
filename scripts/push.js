@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const git = require('isomorphic-git');
 const http = require('isomorphic-git/http/node');
 const fs = require('fs');
@@ -28,7 +29,7 @@ async function run() {
       onAuth: () => ({ username: token })
     });
     console.log("Push result:", pushResult);
-    console.log("\n✅ SUCCESSFULLY PUSHED FRONTEND TO https://github.com/AasthaRai07/Pixel-Muse.git !");
+    console.log("\n✅ SUCCESSFULLY PUSHED TO https://github.com/devmanepranjal-prog/pixelmuse.git !");
   } catch (err) {
     console.error("\n❌ Push Failed:", err.message);
   }

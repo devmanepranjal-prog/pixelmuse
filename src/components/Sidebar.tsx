@@ -8,7 +8,6 @@ import {
   Navigation,
   Compass,
   Map,
-  Radio,
   Users,
   AlertTriangle,
   PlusCircle,
@@ -31,8 +30,6 @@ const navItems = [
   { href: '/micro-navigation', label: 'Micro-Navigation', icon: Compass },
   { href: '/live-adaptation-alert', label: 'Live Alert', icon: AlertTriangle, alert: true },
   { href: '/community-confidence', label: 'Community Confidence', icon: Users },
-  { href: '/report-barrier', label: 'Report Barrier', icon: PlusCircle },
-  { href: '/route-simulator', label: 'Route Simulator', icon: Radio },
 ];
 
 export default function Sidebar() {
