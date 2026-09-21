@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function LiveAdaptationAlertPage() {
-  const { simulatedObstacle, toggleSimulatedObstacle, speakText, lastReroutePayload } = useAccessibility();
+  const { simulatedObstacle, toggleSimulatedObstacle, speakText } = useAccessibility();
 
   return (
     <div className="w-full px-4 md:px-8 py-8 flex justify-center">
@@ -136,48 +136,6 @@ export default function LiveAdaptationAlertPage() {
 
             </div>
           </div>
-
-          {/* Real-time Recalculated Reroute Payload Telemetry */}
-          {lastReroutePayload && (
-            <div className="p-4 rounded-2xl bg-surface-container-high border border-primary/30 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Navigation className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-primary">
-                    Emitted Reroute Payload Telemetry
-                  </span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-secondary/15 text-secondary text-xs font-bold">
-                  Active Recalculation Trigger
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-surface-container-lowest">
-                  <span className="text-on-surface-variant font-bold">Session ID:</span>
-                  <div className="font-mono font-bold text-on-surface truncate">{lastReroutePayload.sessionId}</div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-surface-container-lowest">
-                  <span className="text-on-surface-variant font-bold">Hazard Avoided:</span>
-                  <div className="font-bold text-error">{lastReroutePayload.hazardType}</div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-surface-container-lowest">
-                  <span className="text-on-surface-variant font-bold">Time Saved:</span>
-                  <div className="font-bold text-secondary">+{lastReroutePayload.timeSaved} min</div>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-surface-container-lowest">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-on-surface-variant">Encoded newPolyline:</span>
-                  <span className="text-[10px] text-primary font-bold">OSRM/Google Spec (1e5 precision)</span>
-                </div>
-                <div className="font-mono text-xs text-on-surface break-all bg-surface-container p-2 rounded-lg">
-                  {lastReroutePayload.newPolyline}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-outline-variant/30">

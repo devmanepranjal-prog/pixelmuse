@@ -8,7 +8,6 @@ import {
   Navigation,
   Compass,
   Map,
-  Radio,
   Users,
   AlertTriangle,
   PlusCircle,
@@ -36,8 +35,6 @@ const navItems = [
   { href: '/safety-routing', label: 'Safety Routing', icon: ShieldAlert, badge: 'NEW' },
   { href: '/live-adaptation-alert', label: 'Live Alert', icon: AlertTriangle, alert: true },
   { href: '/community-confidence', label: 'Community Confidence', icon: Users },
-  { href: '/report-barrier', label: 'Report Barrier', icon: PlusCircle },
-  { href: '/route-simulator', label: 'Route Simulator', icon: Radio },
 ];
 
 export default function Sidebar() {

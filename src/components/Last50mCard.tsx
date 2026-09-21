@@ -19,6 +19,10 @@ export default function Last50mCard() {
   );
 
   const confidence = recommended ? computeConfidence(recommended) : null;
+  const daysAgo = useMemo(() => {
+    if (!recommended?.lastVerified) return 0;
+    return Math.floor((Date.now() - new Date(recommended.lastVerified).getTime()) / 86400000);
+  }, [recommended]);
 
   const handleSpeak = () => {
     speakText(reasoning);
@@ -66,7 +70,7 @@ export default function Last50mCard() {
               <Info className="w-3 h-3 text-secondary" />
               <span>
                 Confidence: <strong className="text-on-surface">{confidence.score}%</strong> 
-                {' '}• Verified {Math.floor((Date.now() - new Date(recommended.lastVerified).getTime())/86400000)} days ago, {recommended.confirmations} confirmations
+                {' '}• Verified {daysAgo} days ago, {recommended.confirmations} confirmations
               </span>
             </div>
           )}

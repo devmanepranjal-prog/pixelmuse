@@ -411,14 +411,6 @@ export default function RoutePlannerPage() {
               <Navigation className="w-5 h-5 fill-current" />
               <span>Start Micro-Navigation</span>
             </Link>
-            
-            <Link
-              href="/route-simulator"
-              className="px-6 h-14 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 font-bold text-sm text-on-surface flex items-center justify-center gap-2 transition-colors"
-            >
-              <Sliders className="w-5 h-5 text-primary" />
-              <span>Simulate Reroute</span>
-            </Link>
           </div>
         </section>
 

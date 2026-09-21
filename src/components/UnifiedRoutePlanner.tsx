@@ -1,0 +1,1296 @@
+'use client';
+
+import React, { useState, useRef } from 'react';
+import Link from 'next/link';
+import { useAccessibility } from '@/context/AccessibilityContext';
+import InteractiveMap from '@/components/InteractiveMap';
+import SchematicRouteVisualizer from '@/components/SchematicRouteVisualizer';
+import {
+  DEMO_LOCATIONS,
+  ACCESSIBILITY_PREFERENCES,
+  BENCHMARK_SCENARIOS,
+  COMMUNITY_REPORTS,
+  AccessibilityPreferenceId,
+  getRouteComparison,
+  RouteScenarioData
+} from '@/data/routeSimulatorData';
+import {
+  MapPin,
+  Navigation,
+  ShieldCheck,
+  Compass,
+  Crosshair,
+  RefreshCw,
+  Sliders,
+  Sparkles,
+  Shuffle,
+  Volume2,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  Building,
+  CloudRain,
+  Users,
+  ChevronDown,
+  Info,
+  ThumbsUp,
+  Flame,
+  Accessibility,
+  Footprints,
+  UserCheck,
+  Eye,
+  Heart,
+  Radio,
+  Lock,
+  ArrowDown
+} from 'lucide-react';
+
+interface UnifiedRoutePlannerProps {
+  initialMode?: 'gps' | 'manual';
+}
+
+export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRoutePlannerProps) {
+  const { speakText, simulatedObstacle, toggleSimulatedObstacle } = useAccessibility();
+
+  // Mode state: 'gps' uses detected GPS location, 'manual' unlocks dropdown
+  const [locationMode, setLocationMode] = useState<'gps' | 'manual'>(initialMode);
+
+  // GPS Precision state
+  const [gpsAccuracyMeters, setGpsAccuracyMeters] = useState<number>(0.5);
+  const [isRefreshingGps, setIsRefreshingGps] = useState<boolean>(false);
+  const detectedLocationName = 'Dadar Railway Station';
+  const detectedCoordinates = { lat: 19.0178, lng: 72.8478 };
+
+  // Route Setup state
+  const [startLocation, setStartLocation] = useState<string>('Dadar Railway Station');
+  const [destLocation, setDestLocation] = useState<string>('Shivaji Park');
+  const [preference, setPreference] = useState<AccessibilityPreferenceId>('wheelchair');
+
+  // Animation and calculation states
+  const [isComparing, setIsComparing] = useState<boolean>(false);
+  const [hasCompared, setHasCompared] = useState<boolean>(true);
+  const [scenarioIndex, setScenarioIndex] = useState<number>(0);
+  const [visualizerView, setVisualizerView] = useState<'both' | 'normal' | 'accessible'>('both');
+  const [showObstacleMatrix, setShowObstacleMatrix] = useState<boolean>(false);
+
+  // Preserve existing obstacle scenarios to ensure zero breaking changes
+  const [legacyScenarios, setLegacyScenarios] = useState([
+    {
+      id: 'elev',
+      title: 'Elevator B Maintenance Outage',
+      description: 'Main passenger lift in Sector 3 disabled. Forces step-free reroute via Ramp C.',
+      icon: Building,
+      detour: '+3 mins',
+      active: simulatedObstacle.active,
+    },
+    {
+      id: 'rain',
+      title: 'Wet Ramp / Rain Friction Loss',
+      description: 'Surface friction warning on 4.5% West Incline. Recommends covered concourse.',
+      icon: CloudRain,
+      detour: '+2 mins',
+      active: false,
+    },
+    {
+      id: 'crowd',
+      title: 'High Density Crowd Congestion',
+      description: 'Peak event congestion at Main Gate. Auto-selects low-sensory quiet side corridor.',
+      icon: Users,
+      detour: '+1 min',
+      active: false,
+    },
+  ]);
+
+  // Section references for smooth scrolling
+  const routeSetupRef = useRef<HTMLDivElement>(null);
+  const comparisonRef = useRef<HTMLDivElement>(null);
+
+  // Effective starting location based on mode
+  const effectiveStart = locationMode === 'gps' ? detectedLocationName : startLocation;
+
+  // Compute route scenario data dynamically
+  const scenarioData: RouteScenarioData = getRouteComparison(effectiveStart, destLocation, preference);
+  const { normal, accessible, whyChanged, summaryText } = scenarioData;
+
+  // Dynamic Delta Calculations
+  const deltaDistance = Number((accessible.distance - normal.distance).toFixed(1));
+  const deltaTime = accessible.time - normal.time;
+  const stairsAvoided = normal.stairs - accessible.stairs;
+  const slopeReduction = normal.maxSlope - accessible.maxSlope;
+  const barriersAvoided = normal.barriers - accessible.barriers;
+  const unsafeCrossingsAvoided = normal.unsafeCrossings - accessible.unsafeCrossings;
+
+  const benchmarkKeys = Object.keys(BENCHMARK_SCENARIOS);
+
+  // Handlers
+  const handleUseGpsLocation = () => {
+    setLocationMode('gps');
+    setStartLocation(detectedLocationName);
+    speakText(`GPS mode activated. Current location ${detectedLocationName} set as starting origin with ±${gpsAccuracyMeters}m accuracy.`);
+    routeSetupRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleRefreshGps = () => {
+    setIsRefreshingGps(true);
+    speakText("Refreshing GPS satellite fix...");
+    setTimeout(() => {
+      setIsRefreshingGps(false);
+      setGpsAccuracyMeters(0.5);
+      speakText(`GPS signal calibrated. High precision lock acquired at ±0.5 meters.`);
+    }, 700);
+  };
+
+  const handleToggleAccuracySim = () => {
+    const nextVal = gpsAccuracyMeters <= 5 ? 35 : 0.5;
+    setGpsAccuracyMeters(nextVal);
+    speakText(`GPS simulated accuracy toggled to ±${nextVal} meters.`);
+  };
+
+  const handleCompare = () => {
+    setIsComparing(true);
+    speakText(`Calculating route from ${effectiveStart} to ${destLocation} for ${preference} preference. ${stairsAvoided} stairs avoided, ${barriersAvoided} barriers avoided.`);
+    setTimeout(() => {
+      setIsComparing(false);
+      setHasCompared(true);
+      comparisonRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 600);
+  };
+
+  const handleTryDemoRoute = () => {
+    setLocationMode('gps');
+    setStartLocation('Dadar Railway Station');
+    setDestLocation('Shivaji Park');
+    setPreference('wheelchair');
+    setGpsAccuracyMeters(0.5);
+    setIsComparing(true);
+    speakText("Loading unified demo flow: GPS location at Dadar Railway Station to Shivaji Park for wheelchair user.");
+    setTimeout(() => {
+      setIsComparing(false);
+      setHasCompared(true);
+      comparisonRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 600);
+  };
+
+  const handleTryAnotherScenario = () => {
+    const nextIdx = (scenarioIndex + 1) % benchmarkKeys.length;
+    setScenarioIndex(nextIdx);
+    const [start, dest] = benchmarkKeys[nextIdx].split(' → ');
+    setLocationMode('manual');
+    setStartLocation(start);
+    setDestLocation(dest);
+    setIsComparing(true);
+    speakText(`Loading scenario: ${start} to ${dest}`);
+    setTimeout(() => {
+      setIsComparing(false);
+      setHasCompared(true);
+    }, 550);
+  };
+
+  const handleSwapLocations = () => {
+    if (locationMode === 'gps') {
+      setLocationMode('manual');
+    }
+    const temp = effectiveStart;
+    setStartLocation(destLocation);
+    setDestLocation(temp);
+    handleCompare();
+  };
+
+  const toggleLegacyScenario = (id: string) => {
+    setLegacyScenarios(prev =>
+      prev.map(sc => {
+        if (sc.id === id) {
+          const nextState = !sc.active;
+          if (id === 'elev') toggleSimulatedObstacle();
+          speakText(`Simulation scenario ${sc.title} set to ${nextState ? 'active' : 'inactive'}`);
+          return { ...sc, active: nextState };
+        }
+        return sc;
+      })
+    );
+  };
+
+  const getPreferenceIcon = (id: AccessibilityPreferenceId) => {
+    switch (id) {
+      case 'wheelchair': return <Accessibility className="w-5 h-5" />;
+      case 'reduced-mobility': return <Footprints className="w-5 h-5" />;
+      case 'elderly': return <UserCheck className="w-5 h-5" />;
+      case 'visual-impairment': return <Eye className="w-5 h-5" />;
+      case 'stroller': return <Heart className="w-5 h-5" />;
+      default: return <Navigation className="w-5 h-5" />;
+    }
+  };
+
+  const selectedPrefObj = ACCESSIBILITY_PREFERENCES.find(p => p.id === preference) || ACCESSIBILITY_PREFERENCES[0];
+
+  return (
+    <div className="w-full px-4 md:px-8 py-8 flex justify-center bg-surface">
+      <div className="w-full max-w-[1150px] flex flex-col gap-10">
+        
+        {/* ========================================================================= */}
+        {/* UNIFIED HERO HEADER                                                       */}
+        {/* ========================================================================= */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant/30 pb-6">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center shadow-lg flex-shrink-0">
+              <Compass className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-3xl md:text-4xl font-black text-on-surface tracking-tight">
+                  Accessible Route Planner
+                </h1>
+                <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container uppercase tracking-wider shadow-2xs">
+                  GPS Precision + Route Simulator Unified
+                </span>
+              </div>
+              <p className="text-on-surface-variant text-base font-semibold mt-1">
+                Real-time location detection seamlessly integrated with accessibility-aware route optimization.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Audio & Demo Header CTAs */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleTryDemoRoute}
+              className="px-4 py-2.5 rounded-2xl bg-primary text-white font-black text-xs flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Run Unified Demo Flow</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => speakText(`Unified Accessible Route Planner active. Location is ${effectiveStart} with GPS accuracy ±${gpsAccuracyMeters}m. Destination is ${destLocation} for ${selectedPrefObj.label}.`)}
+              className="p-2.5 rounded-2xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 text-primary shadow-xs transition-colors"
+              title="Speak page summary"
+              aria-label="Read screen aloud"
+            >
+              <Volume2 className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Prototype Disclaimer Pill */}
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-amber-900 dark:text-amber-300">
+          <div className="flex items-center gap-2.5">
+            <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            <span className="text-xs font-bold">
+              Demo data — GPS readings and urban accessibility conditions are simulated for prototype demonstration in Mumbai, Maharashtra, India.
+            </span>
+          </div>
+          <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200 hidden sm:inline-block">
+            Simulated Prototype
+          </span>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* SECTION 1: "YOUR LOCATION" (ALL GPS PRECISION FUNCTIONALITY)              */}
+        {/* ========================================================================= */}
+        <section aria-labelledby="section-gps-location" className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
+                1
+              </div>
+              <div>
+                <h2 id="section-gps-location" className="text-xl md:text-2xl font-black text-on-surface">
+                  Your Location & GPS Precision
+                </h2>
+                <p className="text-xs text-on-surface-variant font-medium">
+                  Sub-meter positioning with obstacle-aware entrance discovery & interactive vector canvas.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-2xs ${
+                gpsAccuracyMeters <= 5
+                  ? 'bg-secondary-container text-on-secondary-container'
+                  : 'bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-200'
+              }`}>
+                <ShieldCheck className="w-4 h-4" />
+                <span>Accuracy ±{gpsAccuracyMeters}m</span>
+              </span>
+            </div>
+          </div>
+
+          {/* GPS Live Status & Coordinate Banner */}
+          <div className="p-5 rounded-3xl bg-surface-container-lowest border border-outline-variant/40 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="relative flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center shadow-xs flex-shrink-0">
+                  <Crosshair className={`w-6 h-6 ${isRefreshingGps ? 'animate-spin text-primary' : ''}`} />
+                </div>
+                {/* Visual Precision Circle Ripple */}
+                <div className="absolute inset-0 rounded-2xl border-2 border-secondary animate-ping pointer-events-none opacity-40" />
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black uppercase tracking-wider text-secondary flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                    GPS Fix Active: {gpsAccuracyMeters <= 5 ? 'High Precision' : 'Low Precision Warning'}
+                  </span>
+                  <span className="text-[10px] font-mono text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">
+                    {detectedCoordinates.lat}° N, {detectedCoordinates.lng}° E
+                  </span>
+                </div>
+
+                <h3 className="text-base font-black text-on-surface mt-0.5">
+                  Detected Location: <span className="text-primary">{detectedLocationName}</span>
+                </h3>
+
+                <p className="text-xs text-on-surface-variant font-medium mt-0.5">
+                  {gpsAccuracyMeters <= 5 ? (
+                    <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                      ✓ Your starting location is precise enough for high-accuracy route comparison.
+                    </span>
+                  ) : (
+                    <span className="text-amber-700 dark:text-amber-400 font-semibold">
+                      ⚠️ Location accuracy is low (±{gpsAccuracyMeters}m). Route starting point may be approximate.
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* GPS Actions & Quick Feed Forward */}
+            <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+              <button
+                type="button"
+                onClick={handleRefreshGps}
+                disabled={isRefreshingGps}
+                className="px-3 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-xs font-bold text-on-surface flex items-center gap-1.5 transition-colors"
+                title="Recalibrate GPS satellite fix"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-primary ${isRefreshingGps ? 'animate-spin' : ''}`} />
+                <span>{isRefreshingGps ? 'Recalibrating...' : 'Refresh GPS'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleToggleAccuracySim}
+                className="px-3 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-[11px] font-bold text-on-surface-variant transition-colors"
+                title="Simulate accuracy drop to test UI warnings"
+              >
+                Simulate: {gpsAccuracyMeters <= 5 ? '±35m' : '±0.5m'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleUseGpsLocation}
+                className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-black flex items-center gap-1.5 shadow-xs hover:bg-primary-container transition-all"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+                <span>Use Location for Route</span>
+              </button>
+            </div>
+
+          </div>
+
+          {/* Complete Google Maps Style Interactive Map Component */}
+          <div className="rounded-3xl overflow-hidden border border-outline-variant/40 shadow-md">
+            <InteractiveMap
+              initialSource={`${detectedLocationName} (GPS High Precision ±${gpsAccuracyMeters}m)`}
+              initialDestination="Cardiology Pavilion - Level 3 (Building B)"
+            />
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* SECTION 2: "ROUTE SETUP" (GPS MODE VS MANUAL MODE)                        */}
+        {/* ========================================================================= */}
+        <section ref={routeSetupRef} aria-labelledby="section-route-setup" className="flex flex-col gap-6 pt-4 border-t border-outline-variant/30">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
+                2
+              </div>
+              <div>
+                <h2 id="section-route-setup" className="text-xl md:text-2xl font-black text-on-surface">
+                  Route Setup & Preferences
+                </h2>
+                <p className="text-xs text-on-surface-variant font-medium">
+                  Connect detected GPS coordinates or select starting point manually.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Demo Scenario Buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleTryDemoRoute}
+                className="px-3 py-1.5 rounded-xl bg-primary-container text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:opacity-95 transition-all"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Try Demo (Dadar → Shivaji Park)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTryAnotherScenario}
+                className="px-3 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs flex items-center gap-1.5 transition-colors border border-outline-variant/30"
+              >
+                <Shuffle className="w-3.5 h-3.5 text-primary" />
+                <span>Try Another Scenario</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mode Selector Tabs (Mode A: GPS vs Mode B: Manual) */}
+          <div className="p-1.5 rounded-2xl bg-surface-container-low border border-outline-variant/40 flex items-center gap-2 max-w-md">
+            <button
+              type="button"
+              onClick={() => {
+                setLocationMode('gps');
+                setStartLocation(detectedLocationName);
+                speakText("Switched to GPS location mode. Using detected GPS coordinates.");
+              }}
+              className={`flex-1 py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all ${
+                locationMode === 'gps'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <Crosshair className="w-4 h-4" />
+              <span>Use Current GPS Location</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLocationMode('manual');
+                speakText("Switched to manual location mode. You can choose any origin manually.");
+              }}
+              className={`flex-1 py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all ${
+                locationMode === 'manual'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              <span>Choose Location Manually</span>
+            </button>
+          </div>
+
+          {/* Form Routing Card */}
+          <div className="p-6 md:p-8 bg-surface-container-lowest rounded-3xl border border-outline-variant/40 shadow-sm flex flex-col gap-6">
+            
+            {/* Origin & Destination Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+              
+              {/* Origin / Starting Location */}
+              <div className="md:col-span-4 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="origin-select" className="text-xs font-black uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                    Starting Location
+                  </label>
+                  {locationMode === 'gps' ? (
+                    <span className="text-[10px] font-black text-secondary uppercase bg-secondary-container/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      GPS Locked (±{gpsAccuracyMeters}m)
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-on-surface-variant">Manual Choice</span>
+                  )}
+                </div>
+
+                {locationMode === 'gps' ? (
+                  <div className="w-full h-12 px-3.5 rounded-2xl bg-surface-container-low border-2 border-secondary/40 text-on-surface font-extrabold text-sm flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-secondary" />
+                      <span>{detectedLocationName}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLocationMode('manual')}
+                      className="text-xs text-primary hover:underline font-bold"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    id="origin-select"
+                    value={startLocation}
+                    onChange={(e) => setStartLocation(e.target.value)}
+                    className="w-full h-12 px-3.5 rounded-2xl bg-surface-container-low border border-outline-variant/40 text-on-surface font-bold text-sm focus:outline-hidden focus:ring-2 focus:ring-primary"
+                  >
+                    <optgroup label="Mumbai Locations (Primary)">
+                      {DEMO_LOCATIONS.filter(l => l.region === 'Mumbai').map((loc) => (
+                        <option key={loc.id} value={loc.name}>
+                          {loc.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Other Metros (Testing)">
+                      {DEMO_LOCATIONS.filter(l => l.region === 'Other Metro').map((loc) => (
+                        <option key={loc.id} value={loc.name}>
+                          {loc.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                )}
+              </div>
+
+              {/* Swap Button */}
+              <div className="md:col-span-1 flex justify-center pb-1">
+                <button
+                  type="button"
+                  onClick={handleSwapLocations}
+                  className="p-3 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/40 transition-colors"
+                  title="Swap starting location and destination"
+                  aria-label="Swap starting location and destination"
+                >
+                  <RefreshCw className="w-4 h-4 text-primary" />
+                </button>
+              </div>
+
+              {/* Destination Location */}
+              <div className="md:col-span-4 flex flex-col gap-2">
+                <label htmlFor="destination-select" className="text-xs font-black uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                  Destination
+                </label>
+                <select
+                  id="destination-select"
+                  value={destLocation}
+                  onChange={(e) => setDestLocation(e.target.value)}
+                  className="w-full h-12 px-3.5 rounded-2xl bg-surface-container-low border border-outline-variant/40 text-on-surface font-bold text-sm focus:outline-hidden focus:ring-2 focus:ring-primary"
+                >
+                  <optgroup label="Mumbai Locations (Primary)">
+                    {DEMO_LOCATIONS.filter(l => l.region === 'Mumbai').map((loc) => (
+                      <option key={loc.id} value={loc.name} disabled={loc.name === effectiveStart}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Other Metros (Testing)">
+                    {DEMO_LOCATIONS.filter(l => l.region === 'Other Metro').map((loc) => (
+                      <option key={loc.id} value={loc.name} disabled={loc.name === effectiveStart}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Primary Compare Routes CTA */}
+              <div className="md:col-span-3">
+                <button
+                  type="button"
+                  onClick={handleCompare}
+                  disabled={isComparing}
+                  className={`w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-md transition-all ${
+                    isComparing
+                      ? 'bg-primary/70 text-white cursor-wait'
+                      : 'bg-primary hover:bg-primary-container text-white active:scale-[0.99]'
+                  }`}
+                >
+                  <Compass className={`w-4 h-4 ${isComparing ? 'animate-spin' : ''}`} />
+                  <span>{isComparing ? 'Recalculating...' : 'Compare Routes'}</span>
+                </button>
+              </div>
+
+            </div>
+
+            {/* Accessibility Preferences Grid */}
+            <div className="flex flex-col gap-3 pt-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black uppercase tracking-wider text-on-surface-variant">
+                  Accessibility Preference Profile
+                </label>
+                <span className="text-xs font-bold text-primary">
+                  Active: {selectedPrefObj.label}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                {ACCESSIBILITY_PREFERENCES.map((pref) => {
+                  const isActive = preference === pref.id;
+                  return (
+                    <button
+                      key={pref.id}
+                      type="button"
+                      onClick={() => {
+                        setPreference(pref.id);
+                        speakText(`Accessibility preference set to ${pref.label}`);
+                      }}
+                      className={`p-3 rounded-2xl border-2 flex flex-col items-center text-center gap-2 transition-all ${
+                        isActive
+                          ? 'bg-primary/10 border-primary text-primary shadow-xs'
+                          : 'bg-surface-container-low border-outline-variant/30 hover:border-outline text-on-surface'
+                      }`}
+                    >
+                      <div className={`p-2 rounded-xl ${
+                        isActive ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant'
+                      }`}>
+                        {getPreferenceIcon(pref.id)}
+                      </div>
+                      <span className="text-xs font-black leading-tight">
+                        {pref.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Priorities Bar */}
+              <div className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold uppercase text-on-surface-variant">
+                    Priority Focus:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedPrefObj.priorities.map((item, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-0.5 rounded-full bg-surface-container-lowest border border-outline-variant/30 text-[11px] font-bold text-on-surface"
+                      >
+                        ✓ {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <span className="text-xs text-on-surface-variant italic sm:max-w-[280px]">
+                  {selectedPrefObj.description}
+                </span>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* SECTION 3: "ROUTE COMPARISON" (NORMAL VS ACCESSIBLE & SCHEMATIC VISUALIZER) */}
+        {/* ========================================================================= */}
+        <section ref={comparisonRef} aria-labelledby="section-route-comparison" className="flex flex-col gap-6 pt-4 border-t border-outline-variant/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
+                3
+              </div>
+              <div>
+                <h2 id="section-route-comparison" className="text-xl md:text-2xl font-black text-on-surface">
+                  Route Comparison & Path Visualization
+                </h2>
+                <p className="text-xs text-on-surface-variant font-medium">
+                  Direct evaluation of standard shortest path against barrier-free accessibility route.
+                </p>
+              </div>
+            </div>
+
+            <span className="text-xs font-bold text-on-surface-variant">
+              Origin: <strong>{effectiveStart}</strong>
+            </span>
+          </div>
+
+          {/* Route Change Animation / Transition Summary Banner */}
+          {hasCompared && (
+            <div className={`p-6 rounded-3xl border-2 transition-all duration-500 shadow-sm ${
+              isComparing
+                ? 'opacity-60 scale-[0.99] bg-surface-container'
+                : 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500/40 text-on-surface'
+            }`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                    <ShieldCheck className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+                        Route Modified & Verified
+                      </span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <h3 className="text-xl font-black text-on-surface mt-0.5">
+                      Accessibility improvement: {barriersAvoided + stairsAvoided} barriers removed
+                    </h3>
+                    
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs font-bold text-on-surface-variant">
+                      {stairsAvoided > 0 && (
+                        <span className="text-emerald-700 dark:text-emerald-400">
+                          ✓ {stairsAvoided} stairs avoided
+                        </span>
+                      )}
+                      {barriersAvoided > 0 && (
+                        <span className="text-emerald-700 dark:text-emerald-400">
+                          ✓ {barriersAvoided} barriers avoided
+                        </span>
+                      )}
+                      {slopeReduction > 0 && (
+                        <span className="text-emerald-700 dark:text-emerald-400">
+                          ✓ Maximum slope reduced from {normal.maxSlope}% → {accessible.maxSlope}%
+                        </span>
+                      )}
+                      {unsafeCrossingsAvoided > 0 && (
+                        <span className="text-emerald-700 dark:text-emerald-400">
+                          ✓ {unsafeCrossingsAvoided} unsafe crossings avoided
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col items-start md:items-end">
+                  <span className="text-[11px] font-extrabold uppercase text-on-surface-variant tracking-wider">
+                    Accessibility Trade-off
+                  </span>
+                  <span className="text-sm font-black text-primary">
+                    {deltaDistance >= 0 ? `+${deltaDistance} km` : `${deltaDistance} km`} / +{deltaTime} min
+                  </span>
+                  <span className="text-[10px] text-on-surface-variant font-medium">
+                    Negligible cost for continuous step-free safety
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Before vs After Side-by-Side Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* NORMAL ROUTE CARD */}
+            <div className="p-6 rounded-3xl bg-surface-container-lowest border-2 border-rose-200 dark:border-rose-900/40 shadow-sm flex flex-col justify-between gap-5">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-rose-200/60 dark:border-rose-900/40 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-3.5 h-3.5 rounded-full bg-rose-500" />
+                    <h3 className="text-lg font-black text-on-surface">
+                      Normal Route
+                    </h3>
+                  </div>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
+                    Standard Nav
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-xl bg-surface-container-low">
+                    <span className="text-[10px] font-extrabold uppercase text-on-surface-variant block">Distance</span>
+                    <span className="text-lg font-black text-on-surface">{normal.distance} km</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-surface-container-low">
+                    <span className="text-[10px] font-extrabold uppercase text-on-surface-variant block">Walking Time</span>
+                    <span className="text-lg font-black text-on-surface">{normal.time} min</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40">
+                    <span className="text-[10px] font-extrabold uppercase text-rose-700 dark:text-rose-300 block">Stairs</span>
+                    <span className="text-lg font-black text-rose-700 dark:text-rose-300">{normal.stairs}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40">
+                    <span className="text-[10px] font-extrabold uppercase text-rose-700 dark:text-rose-300 block">Maximum Slope</span>
+                    <span className="text-lg font-black text-rose-700 dark:text-rose-300">{normal.maxSlope}%</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40">
+                    <span className="text-[10px] font-extrabold uppercase text-rose-700 dark:text-rose-300 block">Barriers</span>
+                    <span className="text-lg font-black text-rose-700 dark:text-rose-300">{normal.barriers}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40">
+                    <span className="text-[10px] font-extrabold uppercase text-rose-700 dark:text-rose-300 block">Unsafe Crossings</span>
+                    <span className="text-lg font-black text-rose-700 dark:text-rose-300">{normal.unsafeCrossings}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/30 text-xs text-on-surface-variant">
+                ⚠️ Optimized strictly for minimal distance. Ignores wheelchair stairs, broken footpaths, and dangerous highway crossings.
+              </div>
+            </div>
+
+            {/* ACCESSIBLE ROUTE CARD */}
+            <div className="p-6 rounded-3xl bg-surface-container-lowest border-2 border-emerald-400 dark:border-emerald-700 shadow-sm flex flex-col justify-between gap-5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
+
+              <div className="flex flex-col gap-4 relative z-10">
+                <div className="flex items-center justify-between border-b border-emerald-200/60 dark:border-emerald-900/40 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-3.5 h-3.5 rounded-full bg-emerald-500" />
+                    <h3 className="text-lg font-black text-on-surface">
+                      Accessible Route
+                    </h3>
+                  </div>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Accessibility-Aware
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-xl bg-surface-container-low">
+                    <span className="text-[10px] font-extrabold uppercase text-on-surface-variant block">Distance</span>
+                    <span className="text-lg font-black text-on-surface">{accessible.distance} km</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-surface-container-low">
+                    <span className="text-[10px] font-extrabold uppercase text-on-surface-variant block">Walking Time</span>
+                    <span className="text-lg font-black text-on-surface">{accessible.time} min</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40">
+                    <span className="text-[10px] font-extrabold uppercase text-emerald-800 dark:text-emerald-300 block">Stairs</span>
+                    <span className="text-lg font-black text-emerald-800 dark:text-emerald-300">{accessible.stairs}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40">
+                    <span className="text-[10px] font-extrabold uppercase text-emerald-800 dark:text-emerald-300 block">Maximum Slope</span>
+                    <span className="text-lg font-black text-emerald-800 dark:text-emerald-300">{accessible.maxSlope}%</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40">
+                    <span className="text-[10px] font-extrabold uppercase text-emerald-800 dark:text-emerald-300 block">Barriers</span>
+                    <span className="text-lg font-black text-emerald-800 dark:text-emerald-300">{accessible.barriers}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40">
+                    <span className="text-[10px] font-extrabold uppercase text-emerald-800 dark:text-emerald-300 block">Unsafe Crossings</span>
+                    <span className="text-lg font-black text-emerald-800 dark:text-emerald-300">{accessible.unsafeCrossings}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-900 dark:text-emerald-200 relative z-10">
+                💡 <strong>UX Principle:</strong> &ldquo;Accessible routes may be slightly longer, but can significantly reduce accessibility barriers.&rdquo;
+              </div>
+            </div>
+
+          </div>
+
+          {/* Schematic Route Path Visualizer Component */}
+          <SchematicRouteVisualizer
+            startLocation={effectiveStart}
+            destLocation={destLocation}
+            normalSteps={scenarioData.normalSteps}
+            accessibleSteps={scenarioData.accessibleSteps}
+            isComparing={isComparing}
+            activeView={visualizerView}
+            onViewChange={setVisualizerView}
+          />
+        </section>
+
+        {/* ========================================================================= */}
+        {/* SECTION 4: "ACCESSIBILITY IMPROVEMENTS" (DYNAMIC DELTA METRICS)            */}
+        {/* ========================================================================= */}
+        <section aria-labelledby="section-metrics" className="flex flex-col gap-6 pt-4 border-t border-outline-variant/30">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
+              4
+            </div>
+            <div>
+              <h2 id="section-metrics" className="text-xl md:text-2xl font-black text-on-surface">
+                Accessibility Improvements & Metric Changes
+              </h2>
+              <p className="text-xs text-on-surface-variant font-medium">
+                Quantifiable reductions in hazards achieved by accessibility-aware routing.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            
+            {/* Distance Delta */}
+            <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/40 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant">
+                <span>Distance</span>
+                <TrendingUp className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <div className="my-2">
+                <div className="text-2xl font-black text-on-surface">
+                  {deltaDistance >= 0 ? `+${deltaDistance}` : deltaDistance} <span className="text-xs font-normal">km</span>
+                </div>
+                <div className="text-[10px] text-on-surface-variant font-semibold">
+                  {normal.distance} km → {accessible.distance} km
+                </div>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-center">
+                Small additional path
+              </span>
+            </div>
+
+            {/* Time Delta */}
+            <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/40 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant">
+                <span>Time</span>
+                <Clock className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <div className="my-2">
+                <div className="text-2xl font-black text-on-surface">
+                  +{deltaTime} <span className="text-xs font-normal">min</span>
+                </div>
+                <div className="text-[10px] text-on-surface-variant font-semibold">
+                  {normal.time} min → {accessible.time} min
+                </div>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-center">
+                Safe walking pace
+              </span>
+            </div>
+
+            {/* Stairs Avoided */}
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 shadow-xs flex flex-col justify-between text-emerald-950 dark:text-emerald-200">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span>Stairs Avoided</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              </div>
+              <div className="my-2">
+                <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+                  {stairsAvoided} <span className="text-xs font-normal">flights</span>
+                </div>
+                <div className="text-[10px] text-on-surface-variant font-semibold">
+                  {normal.stairs} → {accessible.stairs}
+                </div>
+              </div>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-800 dark:text-emerald-300 text-center">
+                {accessible.stairs === 0 ? '100% Step-Free' : 'Major reduction'}
+              </span>
+            </div>
+
+            {/* Max Slope Reduction */}
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 shadow-xs flex flex-col justify-between text-emerald-950 dark:text-emerald-200">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span>Max Slope</span>
+                <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
+              </div>
+              <div className="my-2">
+                <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+                  -{slopeReduction}%
+                </div>
+                <div className="text-[10px] text-on-surface-variant font-semibold">
+                  {normal.maxSlope}% → {accessible.maxSlope}%
+                </div>
+              </div>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-800 dark:text-emerald-300 text-center">
+                ≤ 5% ADA Standard
+              </span>
+            </div>
+
+            {/* Barriers Avoided */}
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 shadow-xs flex flex-col justify-between text-emerald-950 dark:text-emerald-200">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span>Barriers Avoided</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              </div>
+              <div className="my-2">
+                <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+                  {barriersAvoided}
+                </div>
+                <div className="text-[10px] text-on-surface-variant font-semibold">
+                  {normal.barriers} → {accessible.barriers}
+                </div>
+              </div>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-800 dark:text-emerald-300 text-center">
+                Obstacles cleared
+              </span>
+            </div>
+
+            {/* Crossings Safe */}
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 shadow-xs flex flex-col justify-between text-emerald-950 dark:text-emerald-200">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span>Crossings Safe</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              </div>
+              <div className="my-2">
+                <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+                  {unsafeCrossingsAvoided}
+                </div>
+                <div className="text-[10px] text-on-surface-variant font-semibold">
+                  {normal.unsafeCrossings} → {accessible.unsafeCrossings}
+                </div>
+              </div>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-800 dark:text-emerald-300 text-center">
+                Signalized crossings
+              </span>
+            </div>
+
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* SECTION 5: "WHY DID THE ROUTE CHANGE?" & CORE PHILOSOPHY                  */}
+        {/* ========================================================================= */}
+        <section aria-labelledby="section-why-changed" className="flex flex-col gap-6 pt-4 border-t border-outline-variant/30">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
+              5
+            </div>
+            <div>
+              <h2 id="section-why-changed" className="text-xl md:text-2xl font-black text-on-surface">
+                Why Did the Route Change?
+              </h2>
+              <p className="text-xs text-on-surface-variant font-medium">
+                Detailed reasoning behind the accessibility routing decisions.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            
+            {/* Why did we change the route? Panel */}
+            <div className="md:col-span-7 p-6 md:p-7 rounded-3xl bg-surface-container-lowest border border-outline-variant/40 shadow-sm flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-lg font-black text-on-surface">
+                  Routing Decision Log
+                </h3>
+              </div>
+
+              <div className="space-y-2.5">
+                {whyChanged.map((reason, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-surface-container-low text-xs font-bold text-on-surface">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 text-[11px]">
+                      ✓
+                    </span>
+                    <span className="mt-0.5 leading-relaxed">{reason}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-on-surface-variant font-semibold pt-2 border-t border-outline-variant/30 leading-relaxed">
+                &ldquo;The accessible route prioritizes accessibility constraints instead of only minimizing distance.&rdquo;
+              </p>
+            </div>
+
+            {/* Quick Transition Table */}
+            <div className="md:col-span-5 p-6 md:p-7 rounded-3xl bg-surface-container-low border border-outline-variant/40 shadow-sm flex flex-col justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Navigation className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-black text-on-surface">
+                    Route Transition Summary
+                  </h3>
+                </div>
+                <span className="text-xs font-bold text-on-surface-variant block mt-1">
+                  Normal Route → Accessibility-Aware Route
+                </span>
+
+                <div className="space-y-2 mt-4 text-xs font-black">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest">
+                    <span className="text-on-surface-variant">Distance:</span>
+                    <span className="text-on-surface">{normal.distance} km → {accessible.distance} km</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest">
+                    <span className="text-on-surface-variant">Time:</span>
+                    <span className="text-on-surface">{normal.time} min → {accessible.time} min</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest text-emerald-800 dark:text-emerald-300">
+                    <span>Stairs:</span>
+                    <span>{normal.stairs} → {accessible.stairs}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest text-emerald-800 dark:text-emerald-300">
+                    <span>Max Slope:</span>
+                    <span>{normal.maxSlope}% → {accessible.maxSlope}%</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest text-emerald-800 dark:text-emerald-300">
+                    <span>Barriers:</span>
+                    <span>{normal.barriers} → {accessible.barriers}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest text-emerald-800 dark:text-emerald-300">
+                    <span>Unsafe Crossings:</span>
+                    <span>{normal.unsafeCrossings} → {accessible.unsafeCrossings}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-xs font-extrabold text-emerald-900 dark:text-emerald-200">
+                <p className="mb-1 leading-snug">{summaryText}</p>
+                <span className="block font-bold text-emerald-800 dark:text-emerald-300">
+                  Result: The route is slightly longer, but avoids major accessibility barriers.
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Hackathon Centerpiece Quote */}
+          <div className="p-8 rounded-3xl bg-gradient-to-r from-primary to-primary-container text-white shadow-lg flex flex-col items-center text-center gap-3 relative overflow-hidden mt-2">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-xs font-black uppercase tracking-widest">
+              <Flame className="w-4 h-4 text-amber-300" />
+              Core Routing Philosophy
+            </div>
+            <h2 className="text-2xl md:text-3xl font-black max-w-[750px] leading-tight mt-1">
+              &ldquo;Accessibility-aware routing doesn&apos;t always mean the shortest route. It means the route that better fits the user&apos;s needs.&rdquo;
+            </h2>
+            <p className="text-white/80 text-sm font-semibold max-w-[600px] mt-1">
+              Standard routers penalize distance over dignity. PathFinder calculates pedestrian routes that ensure everyone reaches their destination safely.
+            </p>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* SECTION 6: "COMMUNITY-REPORTED CONDITIONS" & OBSTACLE SIMULATION           */}
+        {/* ========================================================================= */}
+        <section aria-labelledby="section-community-data" className="flex flex-col gap-6 pt-4 border-t border-outline-variant/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
+                6
+              </div>
+              <div>
+                <h2 id="section-community-data" className="text-xl md:text-2xl font-black text-on-surface">
+                  Community-Reported Conditions & Obstacle Sandbox
+                </h2>
+                <p className="text-xs text-on-surface-variant font-medium">
+                  Verified crowd reports feeding into dynamic real-time adaptation algorithms.
+                </p>
+              </div>
+            </div>
+
+            <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+              Simulated Civic Crowd-Data
+            </span>
+          </div>
+
+          {/* Community Reports Grid */}
+          <div className="p-6 md:p-8 bg-surface-container-lowest rounded-3xl border border-outline-variant/40 shadow-sm flex flex-col gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {COMMUNITY_REPORTS.map((report) => {
+                const isVerified = report.status === 'Verified';
+                return (
+                  <div
+                    key={report.id}
+                    className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex flex-col justify-between gap-3 hover:border-outline transition-colors"
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          isVerified
+                            ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200'
+                            : 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200'
+                        }`}>
+                          {report.status}
+                        </span>
+                        <span className="text-[10px] text-on-surface-variant font-bold">
+                          {report.timeAgo}
+                        </span>
+                      </div>
+
+                      <h4 className="text-xs font-black text-on-surface mt-1 leading-snug">
+                        {report.title}
+                      </h4>
+                      <p className="text-[11px] text-on-surface-variant">
+                        📍 {report.location}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20 text-[10px] font-bold text-on-surface-variant">
+                      <span className="flex items-center gap-1 text-secondary">
+                        <ShieldCheck className="w-3 h-3" />
+                        {report.confidence}% confidence
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <ThumbsUp className="w-3 h-3" />
+                        {report.upvotes}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between pt-2 text-xs font-bold text-on-surface-variant">
+              <span>Have an obstruction to report near you?</span>
+              <Link
+                href="/report-barrier"
+                className="text-primary hover:underline flex items-center gap-1 font-extrabold"
+              >
+                Report a Hazard or Barrier →
+              </Link>
+            </div>
+          </div>
+
+          {/* Preserved Live Obstacle Injection Sandbox Card */}
+          <div className="p-6 rounded-3xl bg-surface-container-low border border-outline-variant/40 flex flex-col gap-4">
+            <div
+              onClick={() => setShowObstacleMatrix(!showObstacleMatrix)}
+              className="flex items-center justify-between cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <Building className="w-5 h-5 text-primary" />
+                <div>
+                  <h3 className="text-base font-black text-on-surface">
+                    Live Obstacle Injection Sandbox
+                  </h3>
+                  <p className="text-xs text-on-surface-variant font-medium">
+                    Trigger live disruptions (Elevator maintenance, Wet ramps, Crowds) to test dynamic navigation reroutes.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="p-2 rounded-xl bg-surface-container-lowest text-on-surface border border-outline-variant/30"
+                aria-label="Toggle obstacle sandbox"
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform ${showObstacleMatrix ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+
+            {showObstacleMatrix && (
+              <div className="flex flex-col gap-4 pt-3 border-t border-outline-variant/30">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {legacyScenarios.map((sc) => {
+                    const Icon = sc.icon;
+                    return (
+                      <div
+                        key={sc.id}
+                        onClick={() => toggleLegacyScenario(sc.id)}
+                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                          sc.active
+                            ? 'bg-tertiary-container/15 border-tertiary shadow-xs'
+                            : 'bg-surface-container-lowest border-outline-variant/30 hover:border-outline'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                            sc.active ? 'bg-tertiary text-on-tertiary' : 'bg-surface-container text-on-surface-variant'
+                          }`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="font-extrabold text-xs text-on-surface">{sc.title}</h4>
+                            </div>
+                            <span className="text-[10px] font-bold text-on-surface-variant block mt-0.5">
+                              Detour: {sc.detour}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className={`w-10 h-6 rounded-full p-0.5 transition-colors flex items-center ${
+                          sc.active ? 'bg-tertiary justify-end' : 'bg-outline-variant justify-start'
+                        }`}>
+                          <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs font-bold text-on-surface-variant">
+                    {simulatedObstacle.active ? '⚠️ Obstacle Active: Elevator outage triggered' : '✓ Standard conditions active'}
+                  </span>
+                  <Link
+                    href="/live-adaptation-alert"
+                    className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs flex items-center gap-1.5 shadow-xs hover:opacity-90"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Test Live Reroute Banner →</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+      </div>
+    </div>
+  );
+}
