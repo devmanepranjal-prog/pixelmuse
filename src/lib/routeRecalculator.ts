@@ -75,9 +75,6 @@ export function normalizeToIndianBarrierReport(
     quadKey: '',
     clusterCount: mongoRep.cluster_count || 1,
     isExpired: mongoRep.status === BarrierStatus.EXPIRED,
-    source: 'Municipal Transit Sensor',
-    photoAttached: false,
-    confidenceScore: Math.round((mongoRep.confidence_score || 0.8) * 100),
   };
 }
 

@@ -132,3 +132,84 @@ export function getRemainingRouteDistance(
   }
   return total;
 }
+
+/**
+ * Standard Google / OSRM Polyline Algorithm (precision 1e5).
+ * Encodes an array of coordinates into a compact string representation.
+ */
+export function encodePolyline(coordinates: Coordinates[]): string {
+  let output = '';
+  let prevLat = 0;
+  let prevLng = 0;
+
+  for (const coord of coordinates) {
+    const latInt = Math.round(coord.lat * 1e5);
+    const lngInt = Math.round(coord.lng * 1e5);
+
+    const dLat = latInt - prevLat;
+    const dLng = lngInt - prevLng;
+
+    prevLat = latInt;
+    prevLng = lngInt;
+
+    output += encodeSignedNumber(dLat);
+    output += encodeSignedNumber(dLng);
+  }
+
+  return output;
+}
+
+function encodeSignedNumber(num: number): string {
+  let sgnNum = num < 0 ? ~(num << 1) : num << 1;
+  let encoded = '';
+  while (sgnNum >= 0x20) {
+    encoded += String.fromCharCode((0x20 | (sgnNum & 0x1f)) + 63);
+    sgnNum >>= 5;
+  }
+  encoded += String.fromCharCode(sgnNum + 63);
+  return encoded;
+}
+
+/**
+ * Decodes a standard Google / OSRM Polyline string into an array of Coordinates.
+ */
+export function decodePolyline(encoded: string): Coordinates[] {
+  const points: Coordinates[] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    let b: number;
+    let shift = 0;
+    let result = 0;
+
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+
+    const dLat = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lat += dLat;
+
+    shift = 0;
+    result = 0;
+
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+
+    const dLng = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lng += dLng;
+
+    points.push({
+      lat: lat / 1e5,
+      lng: lng / 1e5,
+    });
+  }
+
+  return points;
+}
