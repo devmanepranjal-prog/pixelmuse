@@ -28,11 +28,11 @@ export default function LandingPage() {
           <div className="w-10 h-10 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">
             <Navigation className="w-6 h-6 text-white fill-current" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-xl font-black text-on-surface tracking-tight">
+          <div className="flex flex-col py-1">
+            <span className="text-xl sm:text-2xl font-black text-on-surface tracking-tight leading-normal">
               PathFinder Access
             </span>
-            <span className="text-[11px] text-on-surface-variant font-extrabold uppercase tracking-wider">
+            <span className="text-[11px] sm:text-xs text-on-surface-variant font-extrabold uppercase tracking-wider">
               Accessible Navigation Core
             </span>
           </div>
@@ -82,7 +82,7 @@ export default function LandingPage() {
             <span>WCAG AAA Accessible Community Navigation</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-black text-on-surface tracking-tight leading-[1.1]">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-on-surface tracking-tight leading-tight py-2">
             Barrier-Free Navigation <br className="hidden sm:inline" />
             <span className="text-primary">Tailored to Your Mobility</span>
           </h1>
@@ -93,23 +93,23 @@ export default function LandingPage() {
         </div>
 
         {/* Primary Call-to-Actions */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-md">
+        <div className="flex flex-col md:flex-row items-center gap-4 w-full max-w-xl">
           {user.isLoggedIn ? (
             <>
               <Link
                 href="/gps-precision"
-                className="w-full sm:flex-1 h-14 rounded-2xl bg-primary text-on-primary font-black text-base flex items-center justify-center gap-2 shadow-lg hover:opacity-95 transition-opacity"
+                className="w-full md:flex-1 min-h-[3.5rem] py-3 px-4 rounded-2xl bg-primary text-on-primary font-black text-base flex flex-wrap items-center justify-center gap-2 shadow-lg hover:opacity-95 transition-opacity text-center"
               >
-                <Compass className="w-5 h-5" />
+                <Compass className="w-5 h-5 flex-shrink-0" />
                 <span>Open GPS Precision Map</span>
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-5 h-5 flex-shrink-0" />
               </Link>
 
               <Link
                 href="/micro-navigation"
-                className="w-full sm:flex-1 h-14 rounded-2xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface font-extrabold text-base flex items-center justify-center gap-2 transition-colors"
+                className="w-full md:flex-1 min-h-[3.5rem] py-3 px-4 rounded-2xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface font-extrabold text-base flex flex-wrap items-center justify-center gap-2 transition-colors text-center"
               >
-                <Navigation className="w-5 h-5 text-primary" />
+                <Navigation className="w-5 h-5 text-primary flex-shrink-0" />
                 <span>Micro-Nav HUD</span>
               </Link>
             </>
@@ -117,17 +117,17 @@ export default function LandingPage() {
             <>
               <Link
                 href="/signup"
-                className="w-full sm:flex-1 h-14 rounded-2xl bg-primary text-on-primary font-black text-base flex items-center justify-center gap-2 shadow-lg hover:opacity-95 transition-opacity"
+                className="w-full md:flex-1 min-h-[3.5rem] py-3 px-4 rounded-2xl bg-primary text-on-primary font-black text-base flex flex-wrap items-center justify-center gap-2 shadow-lg hover:opacity-95 transition-opacity text-center"
               >
                 <span>Create Account & Setup Profile</span>
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-5 h-5 flex-shrink-0" />
               </Link>
 
               <Link
                 href="/login"
-                className="w-full sm:flex-1 h-14 rounded-2xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface font-extrabold text-base flex items-center justify-center gap-2 transition-colors"
+                className="w-full md:flex-1 min-h-[3.5rem] py-3 px-4 rounded-2xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/50 text-on-surface font-extrabold text-base flex flex-wrap items-center justify-center gap-2 transition-colors text-center"
               >
-                <User className="w-5 h-5 text-primary" />
+                <User className="w-5 h-5 text-primary flex-shrink-0" />
                 <span>Log In</span>
               </Link>
             </>

@@ -5,54 +5,40 @@ export interface LocationOption {
   name: string;
   region: 'Mumbai' | 'Other Metro';
   description: string;
+  lat?: number;
+  lng?: number;
   approxDistanceBaseKm?: number;
-}
-
-/**
- * Re-export PersonaType as AccessibilityPreferenceId for backward compatibility.
- * The canonical definition lives in AccessibilityContext.
- */
-export type AccessibilityPreferenceId = PersonaType;
-
-/**
- * Re-export PERSONAS as ACCESSIBILITY_PREFERENCES for backward compatibility.
- */
-export const ACCESSIBILITY_PREFERENCES = PERSONAS;
-
-export interface RouteMetrics {
-  distance: number; // km
-  time: number; // minutes
-  stairs: number; // count
-  maxSlope: number; // percentage
-  barriers: number; // count
-  unsafeCrossings: number; // count
 }
 
 export interface SchematicStep {
   id: string;
+  type: 'start' | 'stair' | 'ramp' | 'elevator' | 'tactile_paving' | 'uneven_surface' | 'smooth_footpath' | 'obstacle' | 'destination' | 'turn' | 'unsafe_crossing' | 'barrier' | 'accessible_crossing';
   title: string;
-  type:
-    | 'start'
-    | 'stair'
-    | 'ramp'
-    | 'barrier'
-    | 'curb_cut'
-    | 'unsafe_crossing'
-    | 'accessible_crossing'
-    | 'smooth_footpath'
-    | 'destination';
   detail: string;
+  distance?: number; // Optional distance in meters to next step
+  location?: { lat: number; lng: number }; // Added for navigation tracking
   avoidedOrResolved?: boolean;
 }
 
+export interface RouteStats {
+  distance: number; // km
+  time: number; // mins
+  stairs: number;
+  maxSlope: number; // percentage
+  barriers: number;
+  unsafeCrossings: number;
+}
+
 export interface RouteScenarioData {
-  normal: RouteMetrics;
-  accessible: RouteMetrics;
+  normal: RouteStats;
+  accessible: RouteStats;
   normalSteps: SchematicStep[];
   accessibleSteps: SchematicStep[];
   whyChanged: string[];
   summaryText: string;
 }
+
+export type AccessibilityPreferenceId = PersonaType | 'none';
 
 export interface CommunityReport {
   id: string;
@@ -61,7 +47,7 @@ export interface CommunityReport {
   title: string;
   location: string;
   timeAgo: string;
-  status: 'Verified' | 'Reported' | 'Pending Review';
+  status: 'Reported' | 'Verified';
   confidence: number;
   upvotes: number;
 }
@@ -69,29 +55,29 @@ export interface CommunityReport {
 // 1. Demo Locations
 export const DEMO_LOCATIONS: LocationOption[] = [
   // Mumbai Locations (Primary)
-  { id: 'dadar-station', name: 'Dadar Railway Station', region: 'Mumbai', description: 'Central suburban transit hub with multi-level pedestrian footbridges' },
-  { id: 'matunga-station', name: 'Matunga Railway Station', region: 'Mumbai', description: 'Heritage suburban station connecting King\'s Circle commercial strip' },
-  { id: 'shivaji-park', name: 'Shivaji Park', region: 'Mumbai', description: 'Large public civic grounds, sports tracks & wide perimeter walkways' },
-  { id: 'siddhivinayak-temple', name: 'Siddhivinayak Temple', region: 'Mumbai', description: 'Major spiritual pilgrimage landmark with high pedestrian footfall' },
-  { id: 'bandra-station', name: 'Bandra Railway Station', region: 'Mumbai', description: 'Western suburban transit center with crowded skywalk networks' },
-  { id: 'bkc', name: 'Bandra Kurla Complex', region: 'Mumbai', description: 'Financial central business district with modern wide footpaths' },
-  { id: 'kurla-station', name: 'Kurla Railway Station', region: 'Mumbai', description: 'Critical junction connecting harbor and central rail transit lines' },
-  { id: 'mumbai-university', name: 'Mumbai University, Kalina', region: 'Mumbai', description: 'Large educational campus with internal pedestrian tree-lined avenues' },
-  { id: 'andheri-station', name: 'Andheri Railway Station', region: 'Mumbai', description: 'Heavy metro & suburban interchange with multi-tiered escalators' },
-  { id: 'powai-lake', name: 'Powai Lake', region: 'Mumbai', description: 'Lakeside recreational promenade and jogging concourse' },
-  { id: 'iit-bombay', name: 'IIT Bombay', region: 'Mumbai', description: 'Premier academic campus with accessible ramps and designated pathways' },
-  { id: 'thane-station', name: 'Thane Railway Station', region: 'Mumbai', description: 'Eastern suburban hub with high-density commuter platforms' },
-  { id: 'kalyan-station', name: 'Kalyan Railway Station', region: 'Mumbai', description: 'Outer metropolitan multimodal rail terminal' },
-  { id: 'csmt', name: 'Chhatrapati Shivaji Maharaj Terminus', region: 'Mumbai', description: 'UNESCO World Heritage central rail terminus with subterranean subways' },
-  { id: 'gateway-of-india', name: 'Gateway of India', region: 'Mumbai', description: 'Iconic harbor monument and tourist esplanade at Apollo Bunder' },
-  { id: 'churchgate-station', name: 'Churchgate Railway Station', region: 'Mumbai', description: 'South Mumbai terminus serving corporate Nariman Point' },
-  { id: 'marine-drive', name: 'Marine Drive', region: 'Mumbai', description: '3.6 km seaside boulevard with continuous sea-facing promenade' },
+  { id: 'dadar-station', name: 'Dadar Railway Station', region: 'Mumbai', description: 'Central suburban transit hub with multi-level pedestrian footbridges', lat: 19.0178, lng: 72.8430 },
+  { id: 'matunga-station', name: 'Matunga Railway Station', region: 'Mumbai', description: 'Heritage suburban station connecting King\'s Circle commercial strip', lat: 19.0272, lng: 72.8499 },
+  { id: 'shivaji-park', name: 'Shivaji Park', region: 'Mumbai', description: 'Large public civic grounds, sports tracks & wide perimeter walkways', lat: 19.0267, lng: 72.8375 },
+  { id: 'siddhivinayak-temple', name: 'Siddhivinayak Temple', region: 'Mumbai', description: 'Major spiritual pilgrimage landmark with high pedestrian footfall', lat: 19.0167, lng: 72.8300 },
+  { id: 'bandra-station', name: 'Bandra Railway Station', region: 'Mumbai', description: 'Western suburban transit center with crowded skywalk networks', lat: 19.0544, lng: 72.8406 },
+  { id: 'bkc', name: 'Bandra Kurla Complex', region: 'Mumbai', description: 'Financial central business district with modern wide footpaths', lat: 19.0667, lng: 72.8656 },
+  { id: 'kurla-station', name: 'Kurla Railway Station', region: 'Mumbai', description: 'Critical junction connecting harbor and central rail transit lines', lat: 19.0658, lng: 72.8770 },
+  { id: 'mumbai-university', name: 'Mumbai University, Kalina', region: 'Mumbai', description: 'Large educational campus with internal pedestrian tree-lined avenues', lat: 19.0745, lng: 72.8647 },
+  { id: 'andheri-station', name: 'Andheri Railway Station', region: 'Mumbai', description: 'Heavy metro & suburban interchange with multi-tiered escalators', lat: 19.1197, lng: 72.8465 },
+  { id: 'powai-lake', name: 'Powai Lake', region: 'Mumbai', description: 'Lakeside recreational promenade and jogging concourse', lat: 19.1278, lng: 72.9064 },
+  { id: 'iit-bombay', name: 'IIT Bombay', region: 'Mumbai', description: 'Premier academic campus with accessible ramps and designated pathways', lat: 19.1334, lng: 72.9133 },
+  { id: 'thane-station', name: 'Thane Railway Station', region: 'Mumbai', description: 'Eastern suburban hub with high-density commuter platforms', lat: 19.1860, lng: 72.9781 },
+  { id: 'kalyan-station', name: 'Kalyan Railway Station', region: 'Mumbai', description: 'Outer metropolitan multimodal rail terminal', lat: 19.2384, lng: 73.1311 },
+  { id: 'csmt', name: 'Chhatrapati Shivaji Maharaj Terminus', region: 'Mumbai', description: 'UNESCO World Heritage central rail terminus with subterranean subways', lat: 18.9398, lng: 72.8347 },
+  { id: 'gateway-of-india', name: 'Gateway of India', region: 'Mumbai', description: 'Iconic harbor monument and tourist esplanade at Apollo Bunder', lat: 18.9220, lng: 72.8347 },
+  { id: 'churchgate-station', name: 'Churchgate Railway Station', region: 'Mumbai', description: 'South Mumbai terminus serving corporate Nariman Point', lat: 18.9322, lng: 72.8277 },
+  { id: 'marine-drive', name: 'Marine Drive', region: 'Mumbai', description: '3.6 km seaside boulevard with continuous sea-facing promenade', lat: 18.9440, lng: 72.8229 },
 
   // Other Indian Cities (Testing)
-  { id: 'pune-station', name: 'Pune Railway Station', region: 'Other Metro', description: 'Pune city central railway junction' },
-  { id: 'bengaluru-majestic', name: 'Bengaluru Majestic', region: 'Other Metro', description: 'Kempegowda Bus Station & Metro Interchange' },
-  { id: 'delhi-connaught-place', name: 'Delhi Connaught Place', region: 'Other Metro', description: 'Radial Georgian-style circular commercial hub in Central Delhi' },
-  { id: 'hyderabad-hitech-city', name: 'Hyderabad Hitech City', region: 'Other Metro', description: 'Technology hub with elevated pedestrian skywalks in Cyberabad' },
+  { id: 'pune-station', name: 'Pune Railway Station', region: 'Other Metro', description: 'Pune city central railway junction', lat: 18.5289, lng: 73.8744 },
+  { id: 'bengaluru-majestic', name: 'Bengaluru Majestic', region: 'Other Metro', description: 'Kempegowda Bus Station & Metro Interchange', lat: 12.9779, lng: 77.5714 },
+  { id: 'delhi-connaught-place', name: 'Delhi Connaught Place', region: 'Other Metro', description: 'Radial Georgian-style circular commercial hub in Central Delhi', lat: 28.6304, lng: 77.2177 },
+  { id: 'hyderabad-hitech-city', name: 'Hyderabad Hitech City', region: 'Other Metro', description: 'Technology hub with elevated pedestrian skywalks in Cyberabad', lat: 17.4435, lng: 78.3772 },
 ];
 
 // 2. Accessibility Preferences — now sourced from the unified PERSONAS in AccessibilityContext.

@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAccessibility, PersonaType, PERSONAS } from '@/context/AccessibilityContext';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import LiveMapWrapper from '@/components/LiveMapWrapper';
 import InteractiveMap from '@/components/InteractiveMap';
 import SchematicRouteVisualizer from '@/components/SchematicRouteVisualizer';
 import PersonalizedProfileBanner from '@/components/PersonalizedProfileBanner';
@@ -13,6 +15,8 @@ import {
   getRouteComparison,
   RouteScenarioData
 } from '@/data/routeSimulatorData';
+import { getLiveRouteScenario } from '@/lib/orsClient';
+import LocationSearchInput from '@/components/LocationSearchInput';
 import {
   MapPin,
   Navigation,
@@ -63,18 +67,29 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
     l => l.id === urlDest || l.name.toLowerCase() === urlDest?.toLowerCase()
   )?.name || 'Shivaji Park';
 
+  const { coordinates, accuracy, error, isLoading } = useGeolocation();
+
   // Mode state: 'gps' uses detected GPS location, 'manual' unlocks dropdown
   const [locationMode, setLocationMode] = useState<'gps' | 'manual'>(urlMode || initialMode);
 
   // GPS Precision state
-  const [gpsAccuracyMeters, setGpsAccuracyMeters] = useState<number>(0.5);
+  const [simulatedAccuracy, setSimulatedAccuracy] = useState<number | null>(null);
   const [isRefreshingGps, setIsRefreshingGps] = useState<boolean>(false);
-  const detectedLocationName = 'Dadar Railway Station';
-  const detectedCoordinates = { lat: 19.0178, lng: 72.8478 };
+  
+  const detectedLocationName = error ? 'Location Unavailable' : (coordinates ? 'Live Position' : 'Acquiring GPS...');
+  const detectedCoordinates = coordinates || { lat: 19.0178, lng: 72.8478 }; // Fallback to Dadar
+  const gpsAccuracyMeters = simulatedAccuracy !== null ? simulatedAccuracy : (accuracy ? Math.round(accuracy) : 0.5);
 
   // Route Setup state
-  const [startLocation, setStartLocation] = useState<string>('Dadar Railway Station');
-  const [destLocation, setDestLocation] = useState<string>(initialDest);
+  const defaultStart = DEMO_LOCATIONS.find(l => l.name === 'Dadar Railway Station');
+  const defaultDest = DEMO_LOCATIONS.find(l => l.name === initialDest) || DEMO_LOCATIONS.find(l => l.name === 'Shivaji Park');
+  
+  const [startLocation, setStartLocation] = useState<{name: string, coords: any} | null>(
+    defaultStart ? { name: defaultStart.name, coords: { lat: defaultStart.lat!, lng: defaultStart.lng! } } : null
+  );
+  const [destLocation, setDestLocation] = useState<{name: string, coords: any} | null>(
+    defaultDest ? { name: defaultDest.name, coords: { lat: defaultDest.lat!, lng: defaultDest.lng! } } : null
+  );
   const [preference, setPreference] = useState<PersonaType>(
     urlPersona && PERSONAS.some(p => p.id === urlPersona) ? urlPersona : (persona || 'wheelchair')
   );
@@ -92,16 +107,24 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
   const [scenarioIndex, setScenarioIndex] = useState<number>(0);
   const [visualizerView, setVisualizerView] = useState<'both' | 'normal' | 'accessible'>('both');
 
+  // Navigation State
+  const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+
   // Section references for smooth scrolling
   const routeSetupRef = useRef<HTMLDivElement>(null);
   const comparisonRef = useRef<HTMLDivElement>(null);
 
   // Effective starting location based on mode
-  const effectiveStart = locationMode === 'gps' ? detectedLocationName : startLocation;
+  const effectiveStartName = locationMode === 'gps' ? detectedLocationName : (startLocation?.name || 'Origin');
+  const destName = destLocation?.name || 'Destination';
 
   // Compute route scenario data dynamically
-  const scenarioData: RouteScenarioData = getRouteComparison(effectiveStart, destLocation, preference);
-  const { normal, accessible, whyChanged, summaryText } = scenarioData;
+  const [scenarioData, setScenarioData] = useState<RouteScenarioData & { geojsonNormal?: any, geojsonAccessible?: any }>(
+    getRouteComparison(effectiveStartName, destName, preference)
+  );
+
+  const { normal, accessible, whyChanged, summaryText, geojsonNormal, geojsonAccessible, accessibleSteps, normalSteps } = scenarioData;
 
   // Dynamic Delta Calculations
   const deltaDistance = Number((accessible.distance - normal.distance).toFixed(1));
@@ -116,7 +139,9 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
   // Handlers
   const handleUseGpsLocation = () => {
     setLocationMode('gps');
-    setStartLocation(detectedLocationName);
+    if (coordinates) {
+      setStartLocation({ name: detectedLocationName, coords: coordinates });
+    }
     speakText(`GPS mode activated. Current location ${detectedLocationName} set as starting origin with ±${gpsAccuracyMeters}m accuracy.`);
     routeSetupRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -126,33 +151,73 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
     speakText("Refreshing GPS satellite fix...");
     setTimeout(() => {
       setIsRefreshingGps(false);
-      setGpsAccuracyMeters(0.5);
-      speakText(`GPS signal calibrated. High precision lock acquired at ±0.5 meters.`);
+      setSimulatedAccuracy(null); // Reset to true accuracy
+      speakText(`GPS signal recalibrated.`);
     }, 700);
   };
 
   const handleToggleAccuracySim = () => {
     const nextVal = gpsAccuracyMeters <= 5 ? 35 : 0.5;
-    setGpsAccuracyMeters(nextVal);
+    setSimulatedAccuracy(nextVal);
     speakText(`GPS simulated accuracy toggled to ±${nextVal} meters.`);
   };
 
-  const handleCompare = () => {
+  const handleCompare = async () => {
     setIsComparing(true);
-    speakText(`Calculating route from ${effectiveStart} to ${destLocation} for ${preference} preference. ${stairsAvoided} stairs avoided, ${barriersAvoided} barriers avoided.`);
-    setTimeout(() => {
-      setIsComparing(false);
-      setHasCompared(true);
-      comparisonRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 600);
+    
+    const mockData = getRouteComparison(effectiveStartName, destName, preference);
+    
+    const sCoords = locationMode === 'gps' && coordinates ? coordinates : startLocation?.coords;
+    const dCoords = destLocation?.coords;
+
+    if (sCoords && dCoords) {
+      const liveData = await getLiveRouteScenario(sCoords, dCoords, preference);
+      if (liveData) {
+        setScenarioData(liveData);
+      } else {
+        setScenarioData(mockData);
+      }
+    } else {
+      setScenarioData(mockData);
+    }
+
+    speakText(`Calculating route from ${effectiveStartName} to ${destName} for ${preference} preference. ${stairsAvoided} stairs avoided, ${barriersAvoided} barriers avoided.`);
+    
+    setIsComparing(false);
+    setHasCompared(true);
+    setIsNavigating(false);
+    setCurrentStepIndex(0);
+    comparisonRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleStartNavigation = () => {
+    setIsNavigating(true);
+    setCurrentStepIndex(0);
+    speakText("Navigation started. Follow the arrows on the map.");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSimulateWalk = () => {
+    if (accessibleSteps && currentStepIndex < accessibleSteps.length - 1) {
+      setCurrentStepIndex(prev => prev + 1);
+      speakText(accessibleSteps[currentStepIndex + 1].title || accessibleSteps[currentStepIndex + 1].detail);
+    } else {
+      speakText("You have arrived at your destination.");
+      setIsNavigating(false);
+    }
   };
 
   const handleTryDemoRoute = () => {
     setLocationMode('gps');
-    setStartLocation('Dadar Railway Station');
-    setDestLocation('Shivaji Park');
+    
+    const dadar = DEMO_LOCATIONS.find(l => l.name === 'Dadar Railway Station')!;
+    const shivaji = DEMO_LOCATIONS.find(l => l.name === 'Shivaji Park')!;
+    
+    setStartLocation({ name: dadar.name, coords: { lat: dadar.lat!, lng: dadar.lng! } });
+    setDestLocation({ name: shivaji.name, coords: { lat: shivaji.lat!, lng: shivaji.lng! } });
+    
     setPreference('wheelchair');
-    setGpsAccuracyMeters(0.5);
+    setSimulatedAccuracy(0.5);
     setIsComparing(true);
     speakText("Loading unified demo flow: GPS location at Dadar Railway Station to Shivaji Park for wheelchair user.");
     setTimeout(() => {
@@ -165,12 +230,19 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
   const handleTryAnotherScenario = () => {
     const nextIdx = (scenarioIndex + 1) % benchmarkKeys.length;
     setScenarioIndex(nextIdx);
-    const [start, dest] = benchmarkKeys[nextIdx].split(' → ');
+    const [startName, destName] = benchmarkKeys[nextIdx].split(' → ');
+    
+    const sLoc = DEMO_LOCATIONS.find(l => l.name === startName);
+    const dLoc = DEMO_LOCATIONS.find(l => l.name === destName);
+
     setLocationMode('manual');
-    setStartLocation(start);
-    setDestLocation(dest);
+    if (sLoc && dLoc) {
+      setStartLocation({ name: startName, coords: { lat: sLoc.lat!, lng: sLoc.lng! } });
+      setDestLocation({ name: destName, coords: { lat: dLoc.lat!, lng: dLoc.lng! } });
+    }
+    
     setIsComparing(true);
-    speakText(`Loading scenario: ${start} to ${dest}`);
+    speakText(`Loading scenario: ${startName} to ${destName}`);
     setTimeout(() => {
       setIsComparing(false);
       setHasCompared(true);
@@ -181,10 +253,10 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
     if (locationMode === 'gps') {
       setLocationMode('manual');
     }
-    const temp = effectiveStart;
+    const temp = startLocation;
     setStartLocation(destLocation);
     setDestLocation(temp);
-    handleCompare();
+    setHasCompared(false); // require re-comparison
   };
 
   const getPreferenceIcon = (id: PersonaType) => {
@@ -241,7 +313,7 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
 
             <button
               type="button"
-              onClick={() => speakText(`Unified Accessible Route Planner active. Location is ${effectiveStart} with GPS accuracy ±${gpsAccuracyMeters}m. Destination is ${destLocation} for ${selectedPrefObj.label}.`)}
+              onClick={() => speakText(`Unified Accessible Route Planner active. Location is ${effectiveStartName} with GPS accuracy ±${gpsAccuracyMeters}m. Destination is ${destName} for ${selectedPrefObj.label}.`)}
               className="p-2.5 rounded-2xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 text-primary shadow-xs transition-colors"
               title="Speak page summary"
               aria-label="Read screen aloud"
@@ -371,11 +443,48 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
           </div>
 
           {/* Complete Google Maps Style Interactive Map Component */}
-          <div className="rounded-3xl overflow-hidden border border-outline-variant/40 shadow-md">
-            <InteractiveMap
-              initialSource={`${detectedLocationName} (GPS High Precision ±${gpsAccuracyMeters}m)`}
-              initialDestination="Cardiology Pavilion - Level 3 (Building B)"
+          <div className="relative rounded-3xl overflow-hidden border border-outline-variant/40 shadow-md h-[450px]">
+            <LiveMapWrapper
+              center={detectedCoordinates}
+              accuracy={gpsAccuracyMeters}
+              zoom={14}
+              routeGeojson={preference === 'none' ? geojsonNormal : (geojsonAccessible || geojsonNormal)}
+              navigationStep={isNavigating && accessibleSteps ? accessibleSteps[currentStepIndex] : undefined}
             />
+            {isNavigating && accessibleSteps && currentStepIndex < accessibleSteps.length && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-surface-container-lowest/95 backdrop-blur-md px-6 py-4 rounded-2xl shadow-xl border border-outline-variant/30 flex items-center gap-4 w-11/12 max-w-md">
+                <div className="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-inner">
+                  {/* Pseudo turn icon based on instruction text */}
+                  {accessibleSteps[currentStepIndex].title.toLowerCase().includes('left') ? '⬅️' : 
+                   accessibleSteps[currentStepIndex].title.toLowerCase().includes('right') ? '➡️' : '⬆️'}
+                </div>
+                <div className="flex flex-col flex-1">
+                  <span className="text-xs font-black text-primary uppercase tracking-wide">
+                    {accessibleSteps[currentStepIndex].distance ? `In ${accessibleSteps[currentStepIndex].distance}m` : 'Next Turn'}
+                  </span>
+                  <span className="text-base font-extrabold text-on-surface leading-tight">
+                    {accessibleSteps[currentStepIndex].title}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            {isNavigating && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] flex gap-2">
+                <button
+                  onClick={handleSimulateWalk}
+                  className="px-4 py-2 bg-secondary text-white rounded-xl shadow-lg font-bold text-sm"
+                >
+                  Simulate Walk
+                </button>
+                <button
+                  onClick={() => setIsNavigating(false)}
+                  className="px-4 py-2 bg-error text-white rounded-xl shadow-lg font-bold text-sm"
+                >
+                  End Navigation
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -426,7 +535,9 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
               type="button"
               onClick={() => {
                 setLocationMode('gps');
-                setStartLocation(detectedLocationName);
+                if (coordinates) {
+                  setStartLocation({ name: detectedLocationName, coords: coordinates });
+                }
                 speakText("Switched to GPS location mode. Using detected GPS coordinates.");
               }}
               className={`flex-1 py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all ${
@@ -494,27 +605,11 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
                     </button>
                   </div>
                 ) : (
-                  <select
-                    id="origin-select"
-                    value={startLocation}
-                    onChange={(e) => setStartLocation(e.target.value)}
-                    className="w-full h-12 px-3.5 rounded-2xl bg-surface-container-low border border-outline-variant/40 text-on-surface font-bold text-sm focus:outline-hidden focus:ring-2 focus:ring-primary"
-                  >
-                    <optgroup label="Mumbai Locations (Primary)">
-                      {DEMO_LOCATIONS.filter(l => l.region === 'Mumbai').map((loc) => (
-                        <option key={loc.id} value={loc.name}>
-                          {loc.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Other Metros (Testing)">
-                      {DEMO_LOCATIONS.filter(l => l.region === 'Other Metro').map((loc) => (
-                        <option key={loc.id} value={loc.name}>
-                          {loc.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
+                  <LocationSearchInput 
+                    label="Search Origin"
+                    initialValue={startLocation?.name || ''}
+                    onLocationSelect={(loc) => setStartLocation(loc)}
+                  />
                 )}
               </div>
 
@@ -533,31 +628,11 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
 
               {/* Destination Location */}
               <div className="md:col-span-4 flex flex-col gap-2">
-                <label htmlFor="destination-select" className="text-xs font-black uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                  Destination
-                </label>
-                <select
-                  id="destination-select"
-                  value={destLocation}
-                  onChange={(e) => setDestLocation(e.target.value)}
-                  className="w-full h-12 px-3.5 rounded-2xl bg-surface-container-low border border-outline-variant/40 text-on-surface font-bold text-sm focus:outline-hidden focus:ring-2 focus:ring-primary"
-                >
-                  <optgroup label="Mumbai Locations (Primary)">
-                    {DEMO_LOCATIONS.filter(l => l.region === 'Mumbai').map((loc) => (
-                      <option key={loc.id} value={loc.name} disabled={loc.name === effectiveStart}>
-                        {loc.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Other Metros (Testing)">
-                    {DEMO_LOCATIONS.filter(l => l.region === 'Other Metro').map((loc) => (
-                      <option key={loc.id} value={loc.name} disabled={loc.name === effectiveStart}>
-                        {loc.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
+                <LocationSearchInput 
+                  label="Search Destination"
+                  initialValue={destLocation?.name || ''}
+                  onLocationSelect={(loc) => setDestLocation(loc)}
+                />
               </div>
 
               {/* Primary Compare Routes CTA */}
@@ -668,7 +743,7 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
             </div>
 
             <span className="text-xs font-bold text-on-surface-variant">
-              Origin: <strong>{effectiveStart}</strong>
+              Origin: <strong>{effectiveStartName}</strong>
             </span>
           </div>
 
@@ -716,6 +791,19 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
                           ✓ {unsafeCrossingsAvoided} unsafe crossings avoided
                         </span>
                       )}
+                      {/* Start Navigation Floating CTA */}
+                      {hasCompared && !isNavigating && (
+                        <div className="mt-8 mb-4 border-t border-outline-variant/30 pt-8 flex justify-center">
+                          <button
+                            onClick={handleStartNavigation}
+                            className="bg-primary hover:bg-primary-container text-white px-10 py-4 rounded-3xl font-black text-lg shadow-xl hover:-translate-y-1 transition-all flex items-center gap-3"
+                          >
+                            <Navigation className="w-6 h-6" />
+                            Start Live Navigation
+                          </button>
+                        </div>
+                      )}
+
                     </div>
                   </div>
                 </div>
@@ -841,8 +929,8 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
 
           {/* Schematic Route Path Visualizer Component */}
           <SchematicRouteVisualizer
-            startLocation={effectiveStart}
-            destLocation={destLocation}
+            startLocation={effectiveStartName}
+            destLocation={destName}
             normalSteps={scenarioData.normalSteps}
             accessibleSteps={scenarioData.accessibleSteps}
             isComparing={isComparing}

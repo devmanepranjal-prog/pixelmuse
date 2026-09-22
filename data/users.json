@@ -125,5 +125,48 @@
     "trips": [],
     "createdAt": "2026-09-21T17:43:46.125Z",
     "updatedAt": "2026-09-21T17:44:03.957Z"
+  },
+  {
+    "id": "usr_1790087490784_6srfh",
+    "name": "Aastha rai",
+    "email": "raiaastha57@gmail.com",
+    "passwordHash": "f4d828a7572f06e48b982cea629decfb79427c1d216952e90d85b32e6169b9f0",
+    "role": "user",
+    "pairingCode": "388-776",
+    "linkedParentEmail": null,
+    "linkedChildrenEmails": [],
+    "hasCompletedProfile": true,
+    "accessibilityPreferences": {
+      "primaryPersona": "low-vision",
+      "mobilityType": "visually-impaired",
+      "requireStepFree": true,
+      "maxSlopePercent": 5,
+      "preferLowerSlopes": true,
+      "preferReducedDistance": true,
+      "preferSaferCrossings": true,
+      "avoidStairs": true,
+      "needTactilePaving": false,
+      "needAudioPrompts": true,
+      "maxWalkingDistanceMeters": 1000
+    },
+    "emergencyContacts": [],
+    "privacyConsent": {
+      "allowRealtimeLocation": true,
+      "allowTripHistory": true,
+      "allowAlerts": true
+    },
+    "privacySettings": {
+      "allowRealtimeLocation": true,
+      "allowTripHistory": true,
+      "allowAlerts": true,
+      "shareAccessibilityPreferences": true
+    },
+    "activeTrip": null,
+    "tripHistory": [],
+    "parentAlerts": [],
+    "guardianLinks": [],
+    "trips": [],
+    "createdAt": "2026-09-22T14:31:30.785Z",
+    "updatedAt": "2026-09-22T14:31:44.758Z"
   }
 ]
