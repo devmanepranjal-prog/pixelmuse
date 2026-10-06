@@ -287,7 +287,7 @@
     "email": "akankshaingale@gmail.com",
     "passwordHash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
     "role": "user",
-    "pairingCode": "491-500",
+    "pairingCode": "292-525",
     "linkedParentEmail": null,
     "linkedChildrenEmails": [],
     "hasCompletedProfile": true,
@@ -302,7 +302,8 @@
       "avoidStairs": true,
       "needTactilePaving": false,
       "needAudioPrompts": true,
-      "maxWalkingDistanceMeters": 1000
+      "maxWalkingDistanceMeters": 1000,
+      "fontScale": "md"
     },
     "emergencyContacts": [],
     "privacyConsent": {
@@ -322,8 +323,8 @@
     "guardianLinks": [],
     "trips": [],
     "createdAt": "2026-10-04T05:32:26.036Z",
-    "updatedAt": "2026-10-04T05:32:41.424Z",
-    "pairingCodeExpiresAt": "2026-10-06T10:18:46.533Z",
+    "updatedAt": "2026-10-06T15:57:46.474Z",
+    "pairingCodeExpiresAt": "2026-10-06T16:05:32.974Z",
     "onboarding_complete": true,
     "alertPreferences": {
       "push": true,
