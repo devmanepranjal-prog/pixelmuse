@@ -8,7 +8,7 @@ interface LocationSearchInputProps {
   placeholder?: string;
   icon?: React.ReactNode;
   disabled?: boolean;
-  onLocationSelect: (location: { name: string; coords: Coordinates }) => void;
+  onLocationSelect: (location: { name: string; coords: Coordinates; placeId?: string }) => void;
   initialValue?: string;
 }
 
@@ -46,7 +46,7 @@ export default function LocationSearchInput({
     }
   }, [initialValue]);
 
-  const commitLocation = (text: string, preferredCoords?: Coordinates) => {
+  const commitLocation = (text: string, preferredCoords?: Coordinates, placeId?: string) => {
     if (!text.trim()) return;
     
     // Check preset locations for matching name
@@ -61,7 +61,8 @@ export default function LocationSearchInput({
 
     onLocationSelect({
       name: matchedLoc ? matchedLoc.name : text,
-      coords
+      coords,
+      placeId
     });
   };
 
@@ -94,7 +95,7 @@ export default function LocationSearchInput({
   const handleSelect = (result: GeocodeResult) => {
     setQuery(result.name);
     setIsOpen(false);
-    onLocationSelect({ name: result.name, coords: result.coordinates });
+    onLocationSelect({ name: result.name, coords: result.coordinates, placeId: result.placeId });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -148,7 +149,7 @@ export default function LocationSearchInput({
               onClick={() => { 
                 setQuery(''); 
                 setResults([]); 
-                onLocationSelect({ name: '', coords: { lat: 19.0178, lng: 72.8478 } });
+                onLocationSelect({ name: '', coords: { lat: 19.0178, lng: 72.8478 }, placeId: undefined });
               }}
               className="p-1 hover:text-on-surface"
             >

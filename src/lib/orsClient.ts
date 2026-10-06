@@ -152,32 +152,110 @@ export interface GeocodeResult {
   name: string;
   label: string;
   coordinates: Coordinates;
+  placeId?: string;
 }
 
-export async function geocodeGoogle(query: string): Promise<GeocodeResult[]> {
+let placesSessionToken = '';
+
+function getSessionToken() {
+  if (!placesSessionToken) {
+    placesSessionToken = Math.random().toString(36).substring(2, 15);
+  }
+  return placesSessionToken;
+}
+
+export function resetSessionToken() {
+  placesSessionToken = '';
+}
+
+export async function geocodeGoogle(query: string): Promise<(GeocodeResult & { placeId?: string })[]> {
   if (!query || query.trim().length === 0) return [];
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) return [];
 
   try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
-    const response = await fetch(url);
+    const url = 'https://places.googleapis.com/v1/places:autocomplete';
+    const requestBody = {
+      input: query,
+      includedRegionCodes: ['IN'],
+      sessionToken: getSessionToken(),
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
     if (!response.ok) return [];
     const data = await response.json();
-    if (data.results && data.results.length > 0) {
-      return data.results.map((d: any) => ({
-        name: d.address_components[0].long_name,
-        label: d.formatted_address,
-        coordinates: {
-          lat: d.geometry.location.lat,
-          lng: d.geometry.location.lng
-        }
+    
+    if (data.suggestions && data.suggestions.length > 0) {
+      return data.suggestions.map((s: any) => ({
+        name: s.placePrediction.structuredFormat.mainText.text,
+        label: s.placePrediction.text.text,
+        placeId: s.placePrediction.placeId,
+        coordinates: { lat: 0, lng: 0 }, // We will fetch real coords if needed later, or use placeId for routing
       }));
     }
     return [];
   } catch (error) {
-    console.warn('Google geocoding error:', error);
+    console.warn('Google Places Autocomplete error:', error);
     return [];
+  }
+}
+
+export async function getPlaceDetails(placeId: string): Promise<Coordinates | null> {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const url = `https://places.googleapis.com/v1/places/${placeId}?fields=location&sessionToken=${getSessionToken()}`;
+    const response = await fetch(url, {
+      headers: {
+        'X-Goog-Api-Key': apiKey,
+      }
+    });
+    
+    // Reset session token after a details call terminates the autocomplete session
+    resetSessionToken();
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    
+    if (data.location) {
+      return {
+        lat: data.location.latitude,
+        lng: data.location.longitude,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn('Google Place Details error:', error);
+    return null;
+  }
+}
+
+export async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return 'Live GPS Location';
+
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) return 'Live GPS Location';
+    const data = await response.json();
+    if (data.results && data.results.length > 0) {
+      // Return a readable address (e.g. up to neighborhood/city level, or just the first formatted address)
+      return data.results[0].formatted_address;
+    }
+    return 'Live GPS Location';
+  } catch (error) {
+    console.warn('Google Reverse Geocoding error:', error);
+    return 'Live GPS Location';
   }
 }
 
