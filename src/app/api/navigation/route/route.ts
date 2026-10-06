@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     const result = RouteRequestSchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json({ error: 'Invalid request payload', details: result.error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid request payload', details: result.error.issues }, { status: 400 });
     }
 
     const { origin, destination, languageCode } = result.data;
@@ -44,9 +44,11 @@ export async function POST(req: Request) {
       destinationLocation = { placeId: destination.placeId };
     } else if (destination.lat !== undefined && destination.lng !== undefined) {
       destinationLocation = { 
-        latLng: {
-          latitude: destination.lat,
-          longitude: destination.lng,
+        location: {
+          latLng: {
+            latitude: destination.lat,
+            longitude: destination.lng,
+          }
         }
       };
       straightLineDistance = calculateHaversineDistance(
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
       polylineEncoding: 'ENCODED_POLYLINE',
     };
 
-    const fieldMask = 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.warnings,routes.routeLabels,routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters,routes.legs.steps.staticDuration,routes.legs.steps.startLocation,routes.legs.steps.endLocation,routes.legs.steps.polyline.encodedPolyline';
+    const fieldMask = 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.warnings,routes.routeLabels,routes.legs.startLocation,routes.legs.endLocation,routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters,routes.legs.steps.staticDuration,routes.legs.steps.startLocation,routes.legs.steps.endLocation,routes.legs.steps.polyline.encodedPolyline';
 
     const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
       method: 'POST',
@@ -110,6 +112,9 @@ export async function POST(req: Request) {
         warningFlags.push('Walking distance is over 5 km. Consider using Drive or Transit modes.');
       }
 
+      const legStart = route.legs?.[0]?.startLocation?.latLng;
+      const legEnd = route.legs?.[0]?.endLocation?.latLng;
+
       const steps = route.legs?.[0]?.steps?.map((step: any) => ({
         maneuver: step.navigationInstruction?.maneuver || 'STRAIGHT',
         instruction: step.navigationInstruction?.instructions || '',
@@ -124,13 +129,21 @@ export async function POST(req: Request) {
         distance_m: distance,
         duration_s: parseInt((route.duration || '0s').replace('s', ''), 10),
         encodedPolyline: route.polyline?.encodedPolyline,
+        destinationLocation: legEnd ? { lat: legEnd.latitude, lng: legEnd.longitude } : undefined,
+        originLocation: legStart ? { lat: legStart.latitude, lng: legStart.longitude } : undefined,
         steps,
         warnings: warningFlags,
         labels: route.routeLabels || [],
       };
     });
 
-    return NextResponse.json({ routes: normalizedRoutes });
+    const firstLegEnd = data.routes[0]?.legs?.[0]?.endLocation?.latLng;
+    const destCoords = firstLegEnd ? { lat: firstLegEnd.latitude, lng: firstLegEnd.longitude } : undefined;
+
+    return NextResponse.json({ 
+      routes: normalizedRoutes,
+      destinationLocation: destCoords
+    });
 
   } catch (error: any) {
     console.error('Navigation Route API Error:', error);

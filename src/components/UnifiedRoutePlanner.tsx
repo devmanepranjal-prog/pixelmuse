@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAccessibility } from '@/context/AccessibilityContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import LiveMapWrapper from '@/components/LiveMapWrapper';
+import SchematicRouteVisualizer from '@/components/SchematicRouteVisualizer';
 import InteractiveMap from '@/components/InteractiveMap';
 import PersonalizedProfileBanner from '@/components/PersonalizedProfileBanner';
 import {
@@ -14,7 +15,7 @@ import {
   getRouteComparison,
   RouteScenarioData
 } from '@/data/routeSimulatorData';
-import { getLiveRouteScenario, searchLocation, reverseGeocode } from '@/lib/orsClient';
+import { getLiveRouteScenario, searchLocation, reverseGeocode, getPlaceDetails } from '@/lib/orsClient';
 import { calculateHaversineDistance, isPointNearPolyline, decodePolyline } from '@/lib/spatial';
 import {
   cleanStepInstruction,
@@ -68,7 +69,7 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
   const urlAutonav = searchParams?.get('autonav') === '1' || searchParams?.get('autonav') === 'true';
   const urlReroute = searchParams?.get('reroute') === 'active' || Boolean(searchParams?.get('reportId'));
 
-  const isRerouteActive = Boolean(urlReroute || (activeHazardAlert?.active && activeHazardAlert?.rerouteResult));
+  const isRerouteActive = Boolean(urlReroute);
   const [routeUpdateToast, setRouteUpdateToast] = useState<string | null>(null);
 
   // Resolve initial destination from query param if provided
@@ -178,7 +179,7 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
 
   const effectiveOriginalRouteGeojson = isRerouteActive
     ? (originalRoute || activeHazardAlert?.rerouteResult?.originalRoute || geojsonNormal)
-    : undefined;
+    : ((scenarioData as any)?.originalRouteGeojson || undefined);
 
   const barrierLocation = isRerouteActive
     ? {
@@ -328,16 +329,33 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
     setIsComparing(true);
 
     let targetDestCoords = destLocation?.coords;
-    let targetDestName = destName;
+    let targetDestName = destLocation?.name || destName;
+    let targetPlaceId = destLocation?.placeId;
 
-    // 1. Geocode searchDestination text via searchLocation if coordinates are missing
-    if (!targetDestCoords && destName) {
-      const results = await searchLocation(destName);
+    // 1. Resolve destination coordinates via placeId or searchLocation if missing or zero
+    if ((!targetDestCoords || (targetDestCoords.lat === 0 && targetDestCoords.lng === 0)) && targetPlaceId) {
+      const details = await getPlaceDetails(targetPlaceId);
+      if (details) {
+        targetDestCoords = details;
+        setDestLocation(prev => ({ name: prev?.name || targetDestName, coords: details, placeId: targetPlaceId }));
+      }
+    }
+
+    if ((!targetDestCoords || (targetDestCoords.lat === 0 && targetDestCoords.lng === 0)) && targetDestName) {
+      const results = await searchLocation(targetDestName);
       if (results && results.length > 0) {
-        const nomResult = results[0];
-        targetDestCoords = nomResult.coordinates;
-        targetDestName = nomResult.name;
-        setDestLocation({ name: nomResult.name, coords: nomResult.coordinates });
+        const best = results[0];
+        let coords = best.coordinates;
+        if ((!coords || (coords.lat === 0 && coords.lng === 0)) && best.placeId) {
+          const details = await getPlaceDetails(best.placeId);
+          if (details) coords = details;
+        }
+        if (coords && (coords.lat !== 0 || coords.lng !== 0)) {
+          targetDestCoords = coords;
+          targetDestName = best.name;
+          targetPlaceId = best.placeId;
+          setDestLocation({ name: best.name, coords, placeId: best.placeId });
+        }
       }
     }
 
@@ -346,11 +364,16 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
     const sCoords = locationMode === 'gps' ? detectedCoordinates : startLocation?.coords;
 
     let finalScenarioData: any = mockData;
-    if (sCoords && (targetDestCoords || destLocation?.placeId)) {
+    if (sCoords && (targetDestCoords || targetPlaceId)) {
       try {
+        const hasValidCoords = targetDestCoords && (targetDestCoords.lat !== 0 || targetDestCoords.lng !== 0);
+        const destinationPayload = hasValidCoords
+          ? { lat: targetDestCoords.lat, lng: targetDestCoords.lng, ...(targetPlaceId ? { placeId: targetPlaceId } : {}) }
+          : { placeId: targetPlaceId };
+
         const reqBody = {
           origin: sCoords,
-          destination: destLocation?.placeId ? { placeId: destLocation.placeId } : targetDestCoords,
+          destination: destinationPayload,
           mobility_profile: persona || 'wheelchair',
           languageCode: 'en-IN'
         };
@@ -366,6 +389,16 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
           if (routeData.routes && routeData.routes.length > 0) {
             const accessibleRoute = routeData.routes[0];
             const normalRoute = routeData.routes.length > 1 ? routeData.routes[1] : routeData.routes[0];
+
+            // Update destination coordinates with exact location returned by Google
+            const resolvedEndLoc = accessibleRoute.destinationLocation || routeData.destinationLocation;
+            if (resolvedEndLoc && resolvedEndLoc.lat && resolvedEndLoc.lng) {
+              setDestLocation(prev => ({
+                name: prev?.name || targetDestName,
+                coords: resolvedEndLoc,
+                placeId: prev?.placeId || targetPlaceId
+              }));
+            }
             
             // Map the Google Route into our schema
             const mapRouteSteps = (route: any) => route.steps.map((s: any, idx: number) => {
@@ -1297,6 +1330,93 @@ export default function UnifiedRoutePlanner({ initialMode = 'gps' }: UnifiedRout
             </div>
 
           </div>
+
+          {/* REAL GEOGRAPHIC MAP VISUALIZER (TO SCALE) */}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Compass className="w-5 h-5 text-primary" />
+                <h3 className="text-lg font-black text-on-surface">
+                  Geographic Route Map (To Scale)
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black tracking-wider uppercase px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Google Route
+                </span>
+                <div className="flex rounded-xl bg-surface-container-low p-1 border border-outline-variant/30 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setVisualizerView('both')}
+                    className={`px-3 py-1 rounded-lg transition-colors ${
+                      visualizerView === 'both'
+                        ? 'bg-primary text-on-primary shadow-xs'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    Split Comparison
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisualizerView('normal')}
+                    className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 ${
+                      visualizerView === 'normal'
+                        ? 'bg-rose-700 text-white shadow-xs'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                    Normal ({normal.distance} km)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisualizerView('accessible')}
+                    className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 ${
+                      visualizerView === 'accessible'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                    Accessible ({accessible.distance} km)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative rounded-3xl overflow-hidden border border-outline-variant/40 shadow-xl h-[480px] sm:h-[520px] md:h-[560px] w-full">
+              <LiveMapWrapper
+                center={detectedCoordinates}
+                destination={destLocation?.coords}
+                accuracy={gpsAccuracyMeters}
+                zoom={16}
+                routeGeojson={effectiveRouteGeojson}
+                originalRouteGeojson={effectiveOriginalRouteGeojson}
+                encodedPolyline={scenarioData?.encodedPolyline}
+                barrierLocation={barrierLocation}
+                isRerouted={isRerouteActive}
+                startName={effectiveStartName}
+                destName={destName}
+                activeView={visualizerView}
+                onViewChange={setVisualizerView}
+                showComparisonControls={true}
+                totalDistanceKm={accessible.distance}
+                normalDistanceKm={normal.distance}
+              />
+            </div>
+          </div>
+
+          {/* DETAILED STEP-BY-STEP SCHEMATIC TIMELINE (BELOW THE REAL MAP) */}
+          <SchematicRouteVisualizer
+            startLocation={effectiveStartName}
+            destLocation={destName}
+            normalSteps={scenarioData.normalSteps}
+            accessibleSteps={scenarioData.accessibleSteps}
+            isComparing={isComparing}
+            activeView={visualizerView}
+            onViewChange={setVisualizerView}
+          />
 
           <div className="mt-8 flex flex-col items-center gap-4 bg-surface-container p-6 rounded-3xl border border-outline-variant/30">
             <h3 className="text-lg font-black text-on-surface">Walking route (accessibility not verified)</h3>
